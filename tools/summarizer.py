@@ -29,9 +29,8 @@ class SummaryTool(BaseTool):
                 max_length=500
             )
 
-            model_manager = ModelManager()
-            chat_model = model_manager.create_model_instance()
-            response = chat_model.invoke(input=summarizer_prompt)
+            model_manager = ModelManager(timeout=30)
+            response = model_manager.invoke_with_timeout(summarizer_prompt)
             summary_text = response.content.strip()
 
             result = ToolResult(

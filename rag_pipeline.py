@@ -57,7 +57,7 @@ def rag_pipeline(query:str,model:ModelManager, vectorstore:FAISS):
 
 def chat_with_query(query:str):
     vector_db = get_or_create_vector_database()
-    model_llm = ModelManager()
+    model_llm = ModelManager(timeout=30)
     answer = rag_pipeline(query,model_llm,vector_db)
     return answer
 

@@ -9,10 +9,7 @@ from model import ModelManager
 
 class TaskPlanner:
     def __init__(self):
-        model_manager = ModelManager()
         self.prompt_manager = PromptManager()
-        chat_llm_model = model_manager.create_model_instance()
-        self.llm = chat_llm_model
 
     def analyze_task(self, query: str):
         prompt = self.prompt_manager.render(
@@ -21,7 +18,8 @@ class TaskPlanner:
            task_schema=AppConfig.executor.JSON_TASK_SCHEMA
         )
 
-        response = self.llm.invoke(prompt)
+        model_manager = ModelManager(timeout=30)
+        response = model_manager.invoke_with_timeout(prompt)
         parsed_plan = self.parse_plan(response.content)
         return parsed_plan
 

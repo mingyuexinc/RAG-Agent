@@ -47,10 +47,9 @@ class KnowledgeSearchTool(BaseTool):
         请为下面的问题生成 3 个语义不同但相关的查询：
         {question}
         """
-        model_manager = ModelManager()
-        chat_llm_model = model_manager.create_model_instance()
-        resp = chat_llm_model.invoke(prompt)
-        return [q.strip("-• ") for q in resp.content.split("\n") if len(q.strip()) > 0]
+        model_manager = ModelManager(timeout=30)
+        response = model_manager.invoke_with_timeout(prompt)
+        return [q.strip("-• ") for q in response.content.split("\n") if len(q.strip()) > 0]
 
     def retrieve_with_score(self, db, query, k=5):
         retriever = db.as_retriever(

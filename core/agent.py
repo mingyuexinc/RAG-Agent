@@ -93,9 +93,8 @@ class DocAgent:
 
 
     def generate_response(self, prompt:str) -> str:
-        model_manager = ModelManager()
-        chat_llm_model = model_manager.create_model_instance()
-        response = chat_llm_model.invoke(input=prompt)
+        model_manager = ModelManager(timeout=30)
+        response = model_manager.invoke_with_timeout(prompt)
         return response.content.strip()
 
 
