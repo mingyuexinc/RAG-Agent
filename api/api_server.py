@@ -1,7 +1,9 @@
 import logging
 import os
 import shutil
+import time
 import uuid
+from datetime import datetime
 
 from fastapi import FastAPI, HTTPException, File, UploadFile
 
@@ -11,30 +13,67 @@ from data_loader import data_loader
 from core.planner import TaskPlanner
 from result.response_api import QueryResponse, QueryRequest, UploadResponse
 from result.response_generator import process_tool_result
+from logs.logger_config import setup_logger
 
 from vector_store import get_or_create_vector_database
 
-app = FastAPI(title="RAG Agent", version="1.0.2")
+app = FastAPI(title="RAG Agent", version="1.0.3")
 
-
+logger = setup_logger("api_server_tool_execute")
 
 @app.post("/tool/execute", response_model=QueryResponse)
 async def execute_tool(request:QueryRequest):
+   request_id = str(uuid.uuid4())
+   start_time = time.time()
+   logger.info({
+       "request_id": request_id,
+       "event": "execute_tool",
+       "time_stamp":datetime.now().isoformat(),
+   })
+
    try:
        planner = TaskPlanner()
-
        # init agent
        doc_agent = AppContainer.get_doc_agent()
 
+       logger.info({
+           "request_id": request_id,
+           "event":"planning_start",
+       })
+
        plan = planner.analyze_task(request.query)
 
-       result = doc_agent.execute(plan)
+       logger.info({
+           "request_id": request_id,
+           "event": "execution_start",
+           "task_type":plan.task_type,
+           "tools":plan.tools
+       })
 
-       return process_tool_result(result,doc_agent,request)
+       result = doc_agent.execute(plan)
+       response = process_tool_result(result,doc_agent,request)
+
+       duration = time.time() - start_time
+
+       logger.info({
+           "request_id": request_id,
+           "event": "execution_end",
+           "duration":round(duration,1),
+           "status":result.success
+       })
+       return response
 
    except Exception as e:
-       logging.error(f"Query processing failed: {str(e)}")
-       raise HTTPException(status_code=500, detail=str(e))
+       duration = time.time() - start_time
+       logger.error({
+           "request_id": request_id,
+           "event": "execution_failed",
+           "status":"error",
+           "duration":duration*1000,
+           "error_message":str(e),
+           "error_type":type(e).__name__
+       },exc_info=True)
+       raise HTTPException(status_code=500, detail=f"request failed：{str(e)}")
 
 @app.post("/upload",response_model=UploadResponse)
 async def upload_document(file:UploadFile = File(...)):
