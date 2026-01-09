@@ -7,6 +7,7 @@
 - langchain-community
 - faiss-cpu
 - fast-api
+- ragas
 
 ## instruction:
     An intelligent agent assistant that supports knowledge retrieval, summary generation,
