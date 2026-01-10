@@ -1,0 +1,17 @@
+# PyCharm
+.idea/
+
+# Python
+__pycache__/
+
+# Logs
+logs/log_data
+*.log
+
+# Data and Assets
+assets/upload/
+vector_db/
+
+
+# Environment variables
+.env
