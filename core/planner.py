@@ -5,17 +5,21 @@ from config.app_config import AppConfig
 from prompts.prompt_manager import PromptManager
 from .executor import ExecutionPlan
 from model import ModelManager
+from .session.state_manager import AgentState
 
 
 class TaskPlanner:
     def __init__(self):
         self.prompt_manager = PromptManager()
 
-    def analyze_task(self, query: str):
+    def analyze_task(self, query: str,state: AgentState):
+        state_view = state.to_prompt_view("planner")
+
         prompt = self.prompt_manager.render(
            "templates/planner_template.txt",
            query=query,
-           task_schema=AppConfig.executor.JSON_TASK_SCHEMA
+           **state_view,
+           task_schema=AppConfig.executor.JSON_TASK_SCHEMA,
         )
 
         model_manager = ModelManager(timeout=30)

@@ -5,7 +5,8 @@ import time
 import uuid
 from datetime import datetime
 
-from fastapi import FastAPI, HTTPException, File, UploadFile
+from fastapi import FastAPI, HTTPException, File, UploadFile, Header
+from starlette.responses import JSONResponse
 
 from config.app_config import AppConfig
 from core.container import AppContainer
@@ -22,58 +23,65 @@ app = FastAPI(title="RAG Agent", version="1.0.3")
 logger = setup_logger("api_server_tool_execute")
 
 @app.post("/tool/execute", response_model=QueryResponse)
-async def execute_tool(request:QueryRequest):
-   request_id = str(uuid.uuid4())
-   start_time = time.time()
-   logger.info({
-       "request_id": request_id,
-       "event": "execute_tool",
-       "time_stamp":datetime.now().isoformat(),
-   })
+async def chat_with_session(request:QueryRequest,session_id:str = Header(None)):
+    request_id = str(uuid.uuid4())
+    start_time = time.time()
+    logger.info({
+        "request_id": request_id,
+        "event": "execute_tool",
+        "time_stamp":datetime.now().isoformat(),
+    })
 
-   try:
-       planner = TaskPlanner()
-       # init agent
-       doc_agent = AppContainer.get_doc_agent()
+    try:
+        planner = TaskPlanner()
+        # init agent
+        doc_agent = AppContainer.get_doc_agent()
 
-       logger.info({
-           "request_id": request_id,
-           "event":"planning_start",
-       })
+        logger.info({
+            "request_id": request_id,
+            "event":"planning_start",
+        })
 
-       plan = planner.analyze_task(request.query)
+        session_id = doc_agent.ensure_session(session_id)
+        state = doc_agent.state_manager.load(session_id)
 
-       logger.info({
-           "request_id": request_id,
-           "event": "execution_start",
-           "task_type":plan.task_type,
-           "tools":plan.tools
-       })
+        plan = planner.analyze_task(request.query,state)
 
-       result = doc_agent.execute(plan)
-       response = process_tool_result(result,doc_agent,request)
+        logger.info({
+            "request_id": request_id,
+            "event": "execution_start",
+            "task_type":plan.task_type,
+            "tools":plan.tools
+        })
 
-       duration = time.time() - start_time
+        result = doc_agent.execute_with_session(plan,session_id)
+        response = process_tool_result(result,doc_agent,request,state)
 
-       logger.info({
-           "request_id": request_id,
-           "event": "execution_end",
-           "duration":round(duration,1),
-           "status":result.success
-       })
-       return response
 
-   except Exception as e:
-       duration = time.time() - start_time
-       logger.error({
-           "request_id": request_id,
-           "event": "execution_failed",
-           "status":"error",
-           "duration":duration*1000,
-           "error_message":str(e),
-           "error_type":type(e).__name__
-       },exc_info=True)
-       raise HTTPException(status_code=500, detail=f"request failed：{str(e)}")
+        duration = time.time() - start_time
+
+        logger.info({
+            "request_id": request_id,
+            "event": "execution_end",
+            "duration":round(duration,1),
+            "status":result.success
+        })
+        return JSONResponse(
+            content=response.dict(),
+            headers={"X-Session-ID": session_id}
+        )
+
+    except Exception as e:
+        duration = time.time() - start_time
+        logger.error({
+            "request_id": request_id,
+            "event": "execution_failed",
+            "status":"error",
+            "duration":duration*1000,
+            "error_message":str(e),
+            "error_type":type(e).__name__
+        },exc_info=True)
+        raise HTTPException(status_code=500, detail=f"request failed：{str(e)}")
 
 @app.post("/upload",response_model=UploadResponse)
 async def upload_document(file:UploadFile = File(...)):
@@ -104,28 +112,6 @@ async def upload_document(file:UploadFile = File(...)):
         logging.error(f"File upload failed: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-# @app.get("/search",response_model=SearchResponse)
-# async def search(query:str):
-#     vector_db = get_or_create_vector_database()
-#     multi_query = generate_query_variants(query)
-#     all_results = []
-#
-#     for query in multi_query:
-#         results = retrieve_with_score(vector_db, query)
-#         all_results.extend(results)
-#
-#     unique = {}
-#     for doc,score in all_results:
-#         key = doc.page_content
-#         if key not in unique or score > unique[key][1]:
-#             unique[key] = (doc,score)
-#
-#     final_docs = sorted(unique.values(), key=lambda x: x[1], reverse=True)[:5]
-#
-#     return SearchResponse(
-#         query=query,
-#         retrieved_documents=[doc.page_content for doc, score in final_docs],
-#         similarity_score=[score for doc, score in final_docs]
-#     )
+
 
 

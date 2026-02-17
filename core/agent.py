@@ -1,8 +1,11 @@
+import uuid
 from copy import deepcopy
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 from config.app_config import AppConfig
 from core.executor import ExecutionResult, ExecutionPlan, ExecutionContext
+from core.session.session_manager import SessionManager
+from core.session.state_manager import AgentStateManager
 from model import ModelManager
 from tools.base_tool import BaseTool
 
@@ -13,12 +16,35 @@ class DocAgent:
         self.max_steps = AppConfig.agent.MAX_STEPS
         self.max_retries = AppConfig.agent.MAX_RETRIES
         self.max_content_size = AppConfig.agent.MAX_CONTENT_SIZE
-        self.session_context = {}
 
-    def execute(self,plan:ExecutionPlan)-> ExecutionResult:
+        self.session_manager = SessionManager()
+        self.state_manager = AgentStateManager()
+
+    def ensure_session(self, session_id: Optional[str]) -> str:
+        # first request
+        if not session_id:
+            session_id = str(uuid.uuid4())
+            self.session_manager.create_session(session_id)
+            self.state_manager.init(session_id)
+            return session_id
+
+        session = self.session_manager.get_session(session_id)
+        if session is None:  # expired
+            self.session_manager.create_session(session_id)
+            self.state_manager.init(session_id)
+
+        return session_id
+
+    def execute_with_session(self, plan:ExecutionPlan,session_id:str)-> ExecutionResult:
+
+        state = self.state_manager.load(session_id)
+        if state is None:
+            raise RuntimeError(
+                f"State not initialized for session_id={session_id}"
+            )
+
         executed_tools = []
         tool_results = {}
-        context = ExecutionContext(max_size=self.max_content_size)
         step_count = 0
 
         try:
@@ -29,7 +55,7 @@ class DocAgent:
                 state_snapshot = {
                     "executed_tools": executed_tools.copy(),
                     "tool_results": deepcopy(tool_results),
-                    "context": deepcopy(context)
+                    "context": deepcopy(state.working_context)
                 }
 
                 retry_count = 0
@@ -42,15 +68,17 @@ class DocAgent:
                         tool = self.tools[tool_name]
 
                         raw_params = plan.tool_params.get(tool_name, {})
-                        resolved_params = self._resolve_params(raw_params, context)
+                        resolved_params = self._resolve_params(raw_params, state.working_context)
                         if tool_name == "knowledge_search":
                             set_tool = True
                         else:
                             set_tool = False
-                        result = tool.run(resolved_params, context, set_tool)
+                        result = tool.run(resolved_params, state.working_context, set_tool)
 
                         executed_tools.append(tool_name)
                         tool_results[tool_name] = result
+
+                        state.last_tool_results = tool_results
                         success = result.get("success")
                     except Exception as e:
                         retry_count += 1
@@ -59,7 +87,7 @@ class DocAgent:
                         else:
                             executed_tools = state_snapshot["executed_tools"].copy()
                             tool_results = state_snapshot["tool_results"].deepcopy()
-                            context = state_snapshot["context"].deepcopy()
+                            state.working_context = state_snapshot["context"].deepcopy()
                 step_count += 1
 
             return ExecutionResult(

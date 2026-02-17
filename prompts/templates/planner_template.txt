@@ -4,6 +4,7 @@
 1. knowledge_qa：从文档中查询事实性信息
 2. flowchart_generation：根据制度或流程文档生成流程图
 3. summary：对文档内容进行总结
+4. context_analysis：基于历史对话上下文回答问题
 
 可用工具说明：
 - knowledge_search：从知识库中检索相关文档
@@ -14,17 +15,22 @@
 1. 如果是 knowledge_qa，仅允许使用 knowledge_search
 2. summarizer 只能在 flowchart_generation 或 summary 中使用
 3. chart_gen 只能在 flowchart_generation 中使用
-4. 工具之间存在数据依赖关系时，需要在 tool_params 中显式表达;工具参数引用必须精确到 output_key 及其字段
-5. 不要生成真实的工具执行结果
+4. 如果问题可以基于已有 state 数据回答（如询问历史生成的流程图步骤数、分析之前的图表等），请选择 context_analysis 任务类型并输出空工具序列
+5. 工具之间存在数据依赖关系时，需要在 tool_params 中显式表达;工具参数引用必须精确到 output_key 及其字段
+6. 不要生成真实的工具执行结果
 
-用户查询：
+用户问题：
 {query}
 
-请仅返回一个合法的 JSON 对象：
-- 不要使用 Markdown
-- 不要使用 ```json
-- 不要添加任何额外文本
-- 不要添加注释
-JSON 结构如下：
+历史对话：
+{conversation_history}
+
+上轮工具结果：
+{last_tool_results}
+
+当前工作上下文：
+{working_context}
+
+你必须按照如下JSON Schema输出：
 
 {task_schema}

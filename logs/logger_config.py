@@ -3,9 +3,9 @@ import os
 from logging.handlers import RotatingFileHandler
 
 
-def setup_logger(name:str,log_dir:str = "./logs"):
+def setup_logger(name:str,log_dir:str = "./logs/log_data"):
     if not os.path.exists(log_dir):
-        os.makedirs(log_dir)
+        os.makedirs(log_dir,exist_ok=True)
 
     logger = logging.getLogger(name)
     logger.setLevel(logging.INFO)
