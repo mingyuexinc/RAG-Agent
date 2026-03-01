@@ -21,4 +21,4 @@
 
 
 # result
-![flow_chart_result](./assets/api_test/flow_chart_result.png)
+![flow_chart_result](docs/flow_chart_result.png)

@@ -5,12 +5,12 @@
 __pycache__/
 
 # Logs
-logs/log_data
+infra/logs/log_data
 *.log
 
 # Data and Assets
-assets/upload/
-vector_db/
+data/upload/
+data/vector_db/
 
 
 # Environment variables
