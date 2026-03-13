@@ -13,7 +13,8 @@ def setup_logger(name:str,log_dir:str = "./logs/log_data"):
     file_handler = RotatingFileHandler(
         os.path.join(log_dir, f"{name}.log"),
         maxBytes=1024*1024*10,
-        backupCount=5
+        backupCount=5,
+        encoding='utf-8'  # 关键：指定 UTF-8 编码
     )
 
     console_handler = logging.StreamHandler()

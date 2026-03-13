@@ -4,6 +4,7 @@ from infra.config.model_config import ModelConfig
 from infra.config.prompt_config import PromptConfig
 from infra.config.server_config import ServerConfig
 from infra.config.vector_config import VectorConfig
+from infra.config.pinecone_config import PineconeConfig
 
 
 class AppConfig:
@@ -13,5 +14,6 @@ class AppConfig:
     vector = VectorConfig()
     server = ServerConfig
     prompt = PromptConfig()
+    pinecone = PineconeConfig()
 
 

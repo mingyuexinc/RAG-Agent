@@ -4,6 +4,7 @@ import shutil
 import time
 import uuid
 from datetime import datetime
+from typing import List
 
 from fastapi import FastAPI, HTTPException, File, UploadFile, Header
 from starlette.responses import JSONResponse
@@ -13,16 +14,19 @@ from app.api.schemas_response import QueryResponse, QueryRequest, UploadResponse
 from infra.config.app_config import AppConfig
 from infra.container import AppContainer
 
-from rag.ingestion.loader import data_loader
-
 from agent.response.response_generator import process_tool_result
 from infra.logs.logger_config import setup_logger
 
-from rag.vector_store.faiss_store import get_or_create_vector_database
+# 使用新的pipeline导入
+from rag.ingestion.pipeline import create_default_pipeline
+
 
 app = FastAPI(title="RAG Agent", version="1.0.3")
 
 logger = setup_logger("api_server_tool_execute")
+
+# 创建全局pipeline实例
+document_pipeline = create_default_pipeline(enable_vector_store=True)
 
 @app.post("/tool/execute", response_model=QueryResponse)
 async def chat_with_session(request:QueryRequest,session_id:str = Header(None)):
@@ -83,36 +87,99 @@ async def chat_with_session(request:QueryRequest,session_id:str = Header(None)):
             "error_message":str(e),
             "error_type":type(e).__name__
         },exc_info=True)
-        raise HTTPException(status_code=500, detail=f"request failed：{str(e)}")
+        raise HTTPException(status_code=500)
 
-@app.post("/upload",response_model=UploadResponse)
-async def upload_document(file:UploadFile = File(...)):
+@app.post("/upload", response_model=UploadResponse)
+async def upload_documents(files: List[UploadFile] = File(...)):
+    """
+    统一的文档上传接口，支持单文件和多文件上传
+    使用新的pipeline处理方式
+    """
     try:
-        file_id = str(uuid.uuid4())
-        file_extension = file.filename.split(".")[-1]
-        # type check
-        if file_extension not in AppConfig.vector.FILE_SUFFIX:
-            raise HTTPException(status_code=400, detail="Unsupported file type")
+        uploaded_files = []
+        new_docs_metadata = []
+        
         upload_dir = AppConfig.vector.FILE_LOAD_PATH
         if not os.path.exists(upload_dir):
             os.makedirs(upload_dir)
-        file_path = os.path.join(upload_dir, f"{file_id}.{file_extension}")
-        with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
-        # chunks
-        chunks = data_loader(file_path)
-        # create vector db
-        get_or_create_vector_database(chunks)
+            
+        # 处理所有上传的文件
+        for file in files:
+            file_id = str(uuid.uuid4())
+            file_extension = file.filename.split(".")[-1]
+            
+            # 类型检查
+            if file_extension not in AppConfig.vector.FILE_SUFFIX:
+                raise HTTPException(status_code=400, detail=f"Unsupported file type: {file_extension}")
+                
+            file_path = os.path.join(upload_dir, f"{file_id}.{file_extension}")
+            with open(file_path, "wb") as buffer:
+                shutil.copyfileobj(file.file, buffer)
+            
+            # 使用新的pipeline处理文档，自动去重和向量化
+            doc_metadata = document_pipeline.process_document(file_path, file_id, file.filename)
+            
+            if doc_metadata:
+                # 新文档，记录其 metadata
+                new_docs_metadata.append({
+                    "file_id": file_id,
+                    "filename": file.filename,
+                    "doc_metadata": doc_metadata
+                })
+                uploaded_files.append({
+                    "filename": file.filename,
+                    "file_id": file_id,
+                    "status": "new"
+                })
+            else:
+                # 重复文档
+                uploaded_files.append({
+                    "filename": file.filename,
+                    "file_id": file_id,
+                    "status": "duplicate"
+                })
+                # 清理重复文件
+                os.remove(file_path)
+        
+        # 处理新文档的 chunks（带 metadata）
+        if new_docs_metadata:
+            AppContainer.reload_vector_database()
 
-        return UploadResponse(
-            message="File uploaded successfully",
-            filename=file.filename,
-            file_id=file_id
-        )
+            # 构造响应
+        total_files = len(uploaded_files)
+        new_files = len([f for f in uploaded_files if f["status"] == "new"])
+        duplicate_files = total_files - new_files
 
+        if total_files == 1:
+            file_info = uploaded_files[0]
+            if file_info["status"] == "new":
+                message = f"File uploaded successfully with {new_docs_metadata[0]['doc_metadata'].chunk_count} chunks"
+            else:
+                message = "File already exists, skipped duplicate"
+            return UploadResponse(
+                message=message,
+                filename=file_info["filename"],
+                file_id=file_info["file_id"]
+            )
+        else:
+            if new_files > 0:
+                message = f"Successfully processed {new_files} new files"
+                if duplicate_files > 0:
+                    message += f", skipped {duplicate_files} duplicates"
+            else:
+                message = f"All {duplicate_files} files already exist, no new files processed"
+
+            return UploadResponse(
+                message=message,
+                filename=", ".join([f["filename"] for f in uploaded_files]),
+                file_id=", ".join([f["file_id"] for f in uploaded_files])
+            )
+    except HTTPException:
+        raise
     except Exception as e:
-        logging.error(f"File upload failed: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"File upload failed: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
+
 
 
 

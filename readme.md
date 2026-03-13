@@ -6,6 +6,7 @@
 - langchain-openai
 - langchain-community
 - faiss-cpu
+- pinecone
 - fast-api
 - ragas
 
