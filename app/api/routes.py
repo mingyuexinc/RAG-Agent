@@ -1,4 +1,3 @@
-import logging
 import os
 import shutil
 import time
@@ -13,29 +12,40 @@ from agent.orchestrator.planner import TaskPlanner
 from app.api.schemas_response import QueryResponse, QueryRequest, UploadResponse
 from infra.config.app_config import AppConfig
 from infra.container import AppContainer
+from infra.logs.logger_config import setup_logger
 
 from agent.response.response_generator import process_tool_result
-from infra.logs.logger_config import setup_logger
 
 # 使用新的pipeline导入
 from rag.ingestion.pipeline import create_default_pipeline
 
 
+# 使用统一的日志配置
+logger = setup_logger("api_server_tool_execute")
+
 app = FastAPI(title="RAG Agent", version="1.0.3")
 
-logger = setup_logger("api_server_tool_execute")
+
+@app.get("/health")
+async def health():
+    """健康检查，供前端判断是否已连接后端"""
+    return {"status": "ok"}
 
 # 创建全局pipeline实例
 document_pipeline = create_default_pipeline(enable_vector_store=True)
 
 @app.post("/tool/execute", response_model=QueryResponse)
-async def chat_with_session(request:QueryRequest,session_id:str = Header(None)):
+async def chat_with_session(request:QueryRequest, x_session_id: str = Header(None, alias="X-Session-ID")):
     request_id = str(uuid.uuid4())
     start_time = time.time()
+    
+    # 使用标准化的session_id
+    session_id = x_session_id
     logger.info({
         "request_id": request_id,
         "event": "execute_tool",
         "time_stamp":datetime.now().isoformat(),
+        "received_session_id": session_id
     })
 
     try:
@@ -106,7 +116,8 @@ async def upload_documents(files: List[UploadFile] = File(...)):
         # 处理所有上传的文件
         for file in files:
             file_id = str(uuid.uuid4())
-            file_extension = file.filename.split(".")[-1]
+            # 统一使用小写扩展名，避免 .PDF / .Docx 等大小写导致类型判断失败
+            file_extension = file.filename.split(".")[-1].lower()
             
             # 类型检查
             if file_extension not in AppConfig.vector.FILE_SUFFIX:
@@ -156,11 +167,12 @@ async def upload_documents(files: List[UploadFile] = File(...)):
                 message = f"File uploaded successfully with {new_docs_metadata[0]['doc_metadata'].chunk_count} chunks"
             else:
                 message = "File already exists, skipped duplicate"
-            return UploadResponse(
+            response = UploadResponse(
                 message=message,
                 filename=file_info["filename"],
                 file_id=file_info["file_id"]
             )
+            return response
         else:
             if new_files > 0:
                 message = f"Successfully processed {new_files} new files"
@@ -169,11 +181,12 @@ async def upload_documents(files: List[UploadFile] = File(...)):
             else:
                 message = f"All {duplicate_files} files already exist, no new files processed"
 
-            return UploadResponse(
+            response = UploadResponse(
                 message=message,
                 filename=", ".join([f["filename"] for f in uploaded_files]),
                 file_id=", ".join([f["file_id"] for f in uploaded_files])
             )
+            return response
     except HTTPException:
         raise
     except Exception as e:

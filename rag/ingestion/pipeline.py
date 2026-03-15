@@ -13,7 +13,6 @@ from rag.ingestion.splitters.base_splitter import BaseSplitter, TextSplitter
 
 from rag.ingestion.preprocessors.metadata_extractor import DocumentMetadata
 from rag.ingestion.document_manager import DocumentManager
-from rag.vector_store.faiss_store import add_documents_to_vector_database_with_metadata
 
 logger = setup_logger("rag.ingestion.pipeline")
 
@@ -114,13 +113,20 @@ class DocumentIngestionPipeline:
             self.document_manager.documents[file_id] = metadata
             self.document_manager._save_metadata()
 
-            # 步骤5: 添加到向量存储（如果启用）
+            # 步骤5: 添加到向量存储（如果启用），按配置使用 Pinecone 或 FAISS
             if self.enable_vector_store:
                 logger.info(f"Adding document to vector store")
                 texts = [chunk["text"] for chunk in processed_chunks]
                 metadatas = [chunk["metadata"] for chunk in processed_chunks]
 
-                add_documents_to_vector_database_with_metadata(texts, metadatas)
+                from infra.container import AppContainer
+                if AppContainer.USE_PINECONE:
+                    from rag.vector_store.pinecone_store import get_pinecone_store
+                    store = get_pinecone_store()
+                    store.add_texts_with_metadata(texts, metadatas)
+                else:
+                    from rag.vector_store.faiss_store import add_documents_to_vector_database_with_metadata
+                    add_documents_to_vector_database_with_metadata(texts, metadatas)
                 logger.info(f"Document added to vector store")
 
             logger.info(f"Successfully processed document: {filename}")

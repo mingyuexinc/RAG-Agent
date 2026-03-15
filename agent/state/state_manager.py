@@ -4,6 +4,10 @@ from datetime import datetime
 from typing import Any, Dict
 
 from agent.orchestrator.executor import ExecutionContext
+from infra.logs.logger_config import setup_logger
+
+# 添加状态管理日志
+logger = setup_logger("agent.state_manager")
 
 
 @dataclass
@@ -19,6 +23,10 @@ class AgentState:
     last_tool_results: dict[str, Any] | None = None
 
     def add_conversation_turn(self, query: str, response: str):
+        logger.info(f"添加对话轮次 - session_id: {self.session_id}, turn_id: {self.turn_id}")
+        logger.info(f"Query: {query[:100]}...")
+        logger.info(f"Response: {response[:100]}...")
+        
         self.conversation_history.append({
             "query": query,
             "response": response,
@@ -26,7 +34,11 @@ class AgentState:
         })
 
         if len(self.conversation_history) > 10:
+            old_count = len(self.conversation_history)
             self.conversation_history = self.conversation_history[-10:]
+            logger.info(f"对话历史截断：{old_count} -> {len(self.conversation_history)}")
+        
+        logger.info(f"当前对话历史轮数: {len(self.conversation_history)}")
 
     def _serialize(self, data: Any, pretty: bool = True) -> str:
         """统一的安全序列化方法"""
@@ -107,11 +119,14 @@ class AgentState:
 class AgentStateManager:
     def __init__(self):
         self.states: Dict[str, AgentState] = {}
+        logger.info("AgentStateManager 初始化完成")
 
     def init(self, session_id: str) -> AgentState:
         """
         显式初始化一个新的 AgentState
         """
+        logger.info(f"初始化AgentState，session_id: {session_id}")
+        
         state = AgentState(
             session_id=session_id,
             turn_id=0,
@@ -121,10 +136,17 @@ class AgentStateManager:
             last_tool_results={},
         )
         self.states[session_id] = state
+        logger.info(f"AgentState初始化完成，当前状态数量: {len(self.states)}")
         return state
 
     def load(self, session_id: str) -> AgentState:
-        return self.states.get(session_id)
+        state = self.states.get(session_id)
+        if state:
+            logger.info(f"加载AgentState成功，session_id: {session_id}, turn_id: {state.turn_id}")
+        else:
+            logger.warning(f"AgentState不存在，session_id: {session_id}")
+        return state
 
     def save(self, state: AgentState):
+        logger.info(f"保存AgentState，session_id: {state.session_id}, turn_id: {state.turn_id}")
         self.states[state.session_id] = state
