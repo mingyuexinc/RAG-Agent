@@ -1,8 +1,9 @@
 """
 应用状态管理
 """
-from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
+from typing import List, Dict, Any, Optional
+import datetime
 
 from infra.logs.logger_config import setup_logger
 
@@ -14,8 +15,9 @@ logger = setup_logger("frontend.services.state_manager")
 class ChatMessage:
     """聊天消息"""
     role: str  # "user" or "assistant"
-    content: str
+    content: str | List[Dict]  # 支持结构化内容
     timestamp: str = ""
+    is_structured: bool = False
 
 
 class StateManager:
@@ -27,23 +29,31 @@ class StateManager:
         self.uploaded_files: List[Dict[str, Any]] = []
         self.is_connected: bool = False
     
-    def add_message(self, role: str, content: str):
-        """添加聊天消息"""
+    def add_message(self, role, content, is_structured=False):
+        """添加聊天消息 - 绝对不做任何转换"""
         import datetime
+        
+        # 断言检查
+        assert not isinstance(content, str) or not is_structured, "结构化消息不能是字符串"
+        
         message = ChatMessage(
             role=role,
             content=content,
-            timestamp=datetime.datetime.now().strftime("%H:%M:%S")
+            timestamp=datetime.datetime.now().strftime("%H:%M:%S"),
+            is_structured=is_structured
         )
         self.chat_history.append(message)
-        logger.info(f"添加消息: {role} - {len(content)} 字符")
+        logger.info(f"添加消息: {role} - {'结构化' if is_structured else '文本'}")
     
-    def get_chat_history_for_gradio(self) -> List[Dict[str, str]]:
+    def get_chat_history_for_gradio(self):
         """获取Gradio格式的聊天历史"""
-        return [
-            {"role": msg.role, "content": msg.content} 
-            for msg in self.chat_history
-        ]
+        history = []
+        for msg in self.chat_history:
+            history.append({
+                "role": msg.role, 
+                "content": msg.content
+            })
+        return history
     
     def set_session_id(self, session_id: str):
         """设置会话ID"""

@@ -2,8 +2,10 @@
 聊天界面组件
 """
 import gradio as gr
+import json
 from typing import Tuple, Optional, List, Dict
 from frontend.services import api_client, state_manager
+from frontend.components.image_display import ImageDisplay
 from infra.logs.logger_config import setup_logger
 
 # 使用统一的日志配置
@@ -18,6 +20,7 @@ class ChatInterface:
             [],
             elem_id="chatbot",
             type="messages",
+            sanitize_html=False,  # 允许HTML渲染
         )
         
         self.msg = gr.Textbox(
@@ -36,6 +39,9 @@ class ChatInterface:
             label="状态",
             interactive=False
         )
+        
+        # 添加图片显示组件
+        self.image_display = ImageDisplay()
     
     def setup_events(self):
         """设置事件处理"""
@@ -84,7 +90,54 @@ class ChatInterface:
             else:
                 # 提取回复内容
                 answer = response.get("answer", "抱歉，我无法回答这个问题。")
-                assistant_reply = answer
+                task_type = response.get("task_type", "unknown")
+                
+                # 处理流程图生成任务
+                assistant_content = None
+                if task_type == "flowchart_generation" and "payload" in response:
+                    payload = response["payload"]
+                    chart_url = payload.get("chart_url")
+                    chart_code = payload.get("chart_code")
+                    local_path = payload.get("local_path")
+                    
+                    if local_path and chart_url:
+                        # 构建文本回复
+                        answer = response.get("answer", "已根据制度文档生成流程图。")
+                        stats = self.image_display.get_image_stats(payload)
+                        assistant_text = answer + ("\n\n" + stats if stats else "")
+                        
+                        # 准备图片路径 - 纯字符串操作
+                        if isinstance(local_path, str):
+                            if local_path.startswith("data/"):
+                                image_path_for_display = local_path.replace("data/", "")
+                            elif local_path.startswith("D:\\"):
+                                # 提取文件名
+                                filename = local_path.split("\\")[-1]
+                                image_path_for_display = f"save_pic/2026/{filename}"
+                            elif local_path.startswith("/"):
+                                # 提取文件名
+                                filename = local_path.split("/")[-1]
+                                image_path_for_display = f"save_pic/2026/{filename}"
+                            else:
+                                # 直接使用文件名
+                                filename = local_path.split("/")[-1] if "/" in local_path else local_path.split("\\")[-1]
+                                image_path_for_display = f"save_pic/2026/{filename}"
+                        else:
+                            image_path_for_display = str(local_path)
+                        
+                        # 构建完整URL
+                        image_url = f"http://localhost:8000/file/{image_path_for_display}"
+                        
+                        # 强制使用正斜杠
+                        image_url = image_url.replace("\\", "/")
+                        
+                        # 创建兼容的消息内容（使用Markdown格式）
+                        assistant_content = f"{assistant_text}\n\n![流程图]({image_url})"
+                        
+                    else:
+                        assistant_content = answer + "\n\n❌ 流程图生成失败"
+                else:
+                    assistant_content = response.get("answer", "抱歉，我无法回答这个问题。")
                 
                 # 更新session_id
                 if "session_id" in response:
@@ -94,14 +147,15 @@ class ChatInterface:
                 else:
                     logger.warning("响应中未包含session_id")
                 
-                # 显示任务类型信息
-                task_type = response.get("task_type", "unknown")
-                if task_type != "unknown":
-                    assistant_reply += f"\n\n*(任务类型: {task_type})*"
+                # 显示任务类型信息（非流程图任务）
+                if task_type != "unknown" and task_type != "flowchart_generation":
+                    if isinstance(assistant_content, str):
+                        assistant_content += f"\n\n*(任务类型: {task_type})*"
+                    # 如果是结构化消息，不添加任务类型
             
-            # 添加助手回复
-            state_manager.add_message("assistant", assistant_reply)
-            
+            # 添加助手回复（普通文本格式）
+            state_manager.add_message("assistant", assistant_content)
+        
         except Exception as e:
             logger.error(f"处理消息时出错: {e}")
             error_reply = "❌ 服务暂时不可用，请稍后重试。"

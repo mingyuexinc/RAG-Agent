@@ -4,8 +4,11 @@ import time
 import uuid
 from datetime import datetime
 from typing import List
+from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, File, UploadFile, Header
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse, JSONResponse
 from starlette.responses import JSONResponse
 
 from agent.orchestrator.planner import TaskPlanner
@@ -24,6 +27,13 @@ from rag.ingestion.pipeline import create_default_pipeline
 logger = setup_logger("api_server_tool_execute")
 
 app = FastAPI(title="RAG Agent", version="1.0.3")
+
+# 添加静态文件服务
+# 使用绝对路径
+data_dir = Path(__file__).parent.parent.parent / "data"
+data_dir.mkdir(exist_ok=True)  # 确保目录存在
+
+app.mount("/file", StaticFiles(directory=str(data_dir)), name="file")
 
 
 @app.get("/health")
@@ -71,7 +81,7 @@ async def chat_with_session(request:QueryRequest, x_session_id: str = Header(Non
         })
 
         result = doc_agent.execute_with_session(plan,session_id)
-        response = process_tool_result(result,doc_agent,request,state)
+        response = await process_tool_result(result,doc_agent,request,state)
 
 
         duration = time.time() - start_time

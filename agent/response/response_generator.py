@@ -1,4 +1,5 @@
 from typing import Dict, Any
+import asyncio
 
 from fastapi import HTTPException
 
@@ -8,6 +9,8 @@ from agent.prompts.prompt_manager import PromptManager
 from agent.state.state_manager import AgentState
 from app.api.schemas_response import QueryRequest, QueryResponse
 from infra.config.app_config import AppConfig
+from services.image_service import image_service
+from services.cache_manager import cache_manager
 
 
 class ResponseGenerator:
@@ -25,7 +28,7 @@ class ResponseGenerator:
             self._initialized = True
 
 
-    def generate(
+    async def generate(
         self,
         result: ExecutionResult,
         doc_agent: DocAgent,
@@ -36,7 +39,7 @@ class ResponseGenerator:
             return self._knowledge_qa(result, doc_agent, query,state)
 
         elif result.task_type == "flowchart_generation":
-            return self._flowchart(result)
+            return await self._flowchart(result)
 
         elif result.task_type == "context_analysis":
             return self._context_analysis(doc_agent, query, state)
@@ -71,19 +74,81 @@ class ResponseGenerator:
         }
 
 
-    def _flowchart(self,result: ExecutionResult) -> Dict[str, Any]:
-
+    async def _flowchart(self, result: ExecutionResult) -> Dict[str, Any]:
+        """处理流程图生成响应"""
         chart_result = result.tool_results["chart_gen"]
         chart_data = chart_result["data"]
-
-        return {
-            "task_type":result.task_type,
-            "answer": "已根据制度文档生成流程图。",
-            "payload": {
-                "chart_url": chart_data.get("chart_url"),
-                "chart_code": chart_data.get("chart_code")
+        chart_url = chart_data.get("chart_url")
+        
+        if not chart_url:
+            return {
+                "task_type": result.task_type,
+                "answer": "流程图生成失败：未获取到图表URL。",
+                "payload": None
             }
-        }
+        
+        try:
+            image_result = await image_service.process_flowchart_image(chart_url)
+            
+            if image_result["success"]:
+                # 获取相对路径用于前端显示
+                local_path = image_result["local_path"]
+                relative_path = image_service.get_relative_path(local_path)
+                
+                # 更新缓存管理器
+                cache_manager.add_entry(chart_url, local_path, image_result.get("file_size", 0))
+                
+                # 构建响应
+                response_data = {
+                    "task_type": result.task_type,
+                    "answer": "已根据制度文档生成流程图。",
+                    "payload": {
+                        "chart_url": chart_url,
+                        "chart_code": chart_data.get("chart_code"),
+                        "local_path": relative_path,
+                        "cached": image_result.get("cached", False),
+                        "file_size": image_result.get("file_size", 0)
+                    }
+                }
+                
+                # 添加压缩信息
+                if not image_result.get("cached", False):
+                    compression_info = {
+                        "original_size": image_result.get("original_size", 0),
+                        "optimized_size": image_result.get("optimized_size", 0),
+                        "compression_ratio": image_result.get("compression_ratio", 0)
+                    }
+                    response_data["payload"]["compression_info"] = compression_info
+                
+                return response_data
+            else:
+                return {
+                    "task_type": result.task_type,
+                    "answer": f"流程图处理失败：{image_result.get('error', '未知错误')}",
+                    "payload": {
+                        "chart_url": chart_url,
+                        "chart_code": chart_data.get("chart_code"),
+                        "local_path": None,
+                        "error": image_result.get("error")
+                    }
+                }
+                
+        except Exception as e:
+            # 记录错误并返回失败响应
+            from infra.logs.logger_config import setup_logger
+            logger = setup_logger("agent.response")
+            logger.error(f"流程图图片处理失败: {e}")
+            
+            return {
+                "task_type": result.task_type,
+                "answer": "流程图生成过程中出现错误，请稍后重试。",
+                "payload": {
+                    "chart_url": chart_url,
+                    "chart_code": chart_data.get("chart_code"),
+                    "local_path": None,
+                    "error": str(e)
+                }
+            }
 
     def _context_analysis(self, doc_agent, query, state) -> Dict[str, Any]:
         if not state.working_context:
@@ -109,18 +174,17 @@ class ResponseGenerator:
 
 
 
-def process_tool_result(
+async def process_tool_result(
     result: ExecutionResult,
     doc_agent: DocAgent,
     request: QueryRequest,
-    state:AgentState
-):
+    state:AgentState):
     if not result.success:
         raise HTTPException(status_code=500, detail=result.error)
 
     result_generator = ResponseGenerator()
 
-    response_data = result_generator.generate(
+    response_data = await result_generator.generate(
         result=result,
         doc_agent=doc_agent,
         query=request.query,
