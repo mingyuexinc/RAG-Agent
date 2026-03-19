@@ -2,7 +2,6 @@
 聊天界面组件
 """
 import gradio as gr
-import json
 from typing import Tuple, Optional, List, Dict
 from frontend.services import api_client, state_manager
 from frontend.components.image_display import ImageDisplay
@@ -16,6 +15,16 @@ class ChatInterface:
     """聊天界面组件"""
     
     def __init__(self):
+        """初始化聊天界面组件"""
+        # 在创建组件前先更新连接状态
+        try:
+            is_connected = api_client.health_check()
+            state_manager.is_connected = is_connected
+            logger.info(f"组件初始化时连接状态: {is_connected}")
+        except Exception as e:
+            logger.error(f"初始化健康检查失败: {e}")
+            state_manager.is_connected = False
+        
         self.chatbot = gr.Chatbot(
             [],
             elem_id="chatbot",
@@ -24,18 +33,19 @@ class ChatInterface:
         )
         
         self.msg = gr.Textbox(
-            label="",
-            placeholder="输入您的问题...",
-            lines=2,
-            max_lines=8,
-            show_label=False,
+            label="请输入您的问题",
+            placeholder="例如：请生成一个银行客户经理考核流程图",
+            lines=2
         )
-        
         self.submit_btn = gr.Button("发送", variant="primary")
         self.clear_btn = gr.Button("清空对话", variant="secondary")
         
+        # 使用更新后的状态初始化
+        current_status = state_manager.get_status_text()
+        logger.info(f"状态组件初始值: {current_status}")
+        
         self.status = gr.Textbox(
-            value=state_manager.get_status_text(),
+            value=current_status,
             label="状态",
             interactive=False
         )
@@ -47,8 +57,8 @@ class ChatInterface:
         """设置事件处理"""
         # 发送消息事件
         submit_events = [
-            self.msg.submit(self._handle_message, [self.msg], [self.msg, self.chatbot]),
-            self.submit_btn.click(self._handle_message, [self.msg], [self.msg, self.chatbot])
+            self.msg.submit(self._handle_message, [self.msg], [self.msg, self.chatbot, self.status]),
+            self.submit_btn.click(self._handle_message, [self.msg], [self.msg, self.chatbot, self.status])
         ]
         
         # 清空对话事件
@@ -59,10 +69,10 @@ class ChatInterface:
         
         return submit_events
     
-    def _handle_message(self, message: str) -> Tuple[str, List[Dict[str, str]]]:
+    def _handle_message(self, message: str) -> Tuple[str, List[Dict[str, str]], str]:
         """处理用户消息"""
         if not message.strip():
-            return "", state_manager.get_chat_history_for_gradio()
+            return "", state_manager.get_chat_history_for_gradio(), state_manager.get_status_text()
         
         # 记录当前session状态
         current_session_id = state_manager.session_id
@@ -164,7 +174,7 @@ class ChatInterface:
         # 更新聊天历史
         chat_history = state_manager.get_chat_history_for_gradio()
         
-        return "", chat_history
+        return "", chat_history, state_manager.get_status_text()
     
     def _clear_chat(self) -> List[Dict[str, str]]:
         """清空聊天历史"""

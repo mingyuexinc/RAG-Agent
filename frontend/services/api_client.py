@@ -168,7 +168,9 @@ class APIClient:
         """检查API健康状态"""
         try:
             response = self._make_request("GET", "/health")
-            return "error" not in response and response.get("status") == "ok"
+            # 正确处理包装的响应格式
+            return ("error" not in response and 
+                    response.get("data", {}).get("status") == "ok")
         except:
             return False
 
