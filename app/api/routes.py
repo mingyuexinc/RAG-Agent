@@ -129,13 +129,32 @@ async def upload_documents(files: List[UploadFile] = File(...)):
             # 统一使用小写扩展名，避免 .PDF / .Docx 等大小写导致类型判断失败
             file_extension = file.filename.split(".")[-1].lower()
             
+            logger.info(f"处理文件: {file.filename}, 扩展名: {file_extension}")
+            
             # 类型检查
             if file_extension not in AppConfig.vector.FILE_SUFFIX:
                 raise HTTPException(status_code=400, detail=f"Unsupported file type: {file_extension}")
                 
             file_path = os.path.join(upload_dir, f"{file_id}.{file_extension}")
-            with open(file_path, "wb") as buffer:
-                shutil.copyfileobj(file.file, buffer)
+            
+            try:
+                # 重置文件指针到开始位置
+                await file.seek(0)
+                logger.info(f"文件指针已重置: {file.filename}")
+                
+                # 读取文件内容
+                content = await file.read()
+                logger.info(f"文件内容读取完成: {file.filename}, 大小: {len(content)} bytes")
+                
+                # 写入本地文件
+                with open(file_path, "wb") as buffer:
+                    buffer.write(content)
+                
+                logger.info(f"文件保存成功: {file_path}")
+                
+            except Exception as e:
+                logger.error(f"文件处理失败 {file.filename}: {e}", exc_info=True)
+                raise HTTPException(status_code=500, detail=f"File processing failed: {str(e)}")
             
             # 使用新的pipeline处理文档，自动去重和向量化
             doc_metadata = document_pipeline.process_document(file_path, file_id, file.filename)
@@ -162,26 +181,22 @@ async def upload_documents(files: List[UploadFile] = File(...)):
                 # 清理重复文件
                 os.remove(file_path)
         
-        # 处理新文档的 chunks（带 metadata）
-        if new_docs_metadata:
-            AppContainer.reload_vector_database()
-
-            # 构造响应
+        # 构造响应
         total_files = len(uploaded_files)
         new_files = len([f for f in uploaded_files if f["status"] == "new"])
         duplicate_files = total_files - new_files
 
+        logger.info(f"构造响应: 总文件数={total_files}, 新文件数={new_files}")
+
         if total_files == 1:
             file_info = uploaded_files[0]
-            if file_info["status"] == "new":
-                message = f"File uploaded successfully with {new_docs_metadata[0]['doc_metadata'].chunk_count} chunks"
-            else:
-                message = "File already exists, skipped duplicate"
+            message = f"File uploaded successfully"
             response = UploadResponse(
                 message=message,
                 filename=file_info["filename"],
                 file_id=file_info["file_id"]
             )
+            logger.info(f"单文件响应: {response}")
             return response
         else:
             if new_files > 0:
@@ -196,6 +211,7 @@ async def upload_documents(files: List[UploadFile] = File(...)):
                 filename=", ".join([f["filename"] for f in uploaded_files]),
                 file_id=", ".join([f["file_id"] for f in uploaded_files])
             )
+            logger.info(f"多文件响应: {response}")
             return response
     except HTTPException:
         raise

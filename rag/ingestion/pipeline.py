@@ -8,6 +8,7 @@ from pathlib import Path
 from infra.logs.logger_config import setup_logger
 from rag.ingestion.loaders.base_loader import BaseLoader
 from rag.ingestion.loaders.pdf_loader import PDFLoader
+from rag.ingestion.loaders.loader_factory import get_loader
 from rag.ingestion.preprocessors.base_preprocessor import BasePreprocessor, MetadataPreprocessor
 from rag.ingestion.splitters.base_splitter import BaseSplitter, TextSplitter
 
@@ -78,7 +79,10 @@ class DocumentIngestionPipeline:
 
             # 步骤1: 加载文档
             logger.info(f"Loading document: {filename}")
-            text = self.loader.load(file_path)
+            
+            # 根据文件类型动态选择加载器
+            loader = get_loader(file_path, filename)
+            text = loader.load(file_path)
 
             # 步骤2: 切片文档
             logger.info(f"Splitting document into chunks")

@@ -5,6 +5,7 @@ import gradio as gr
 import logging
 import tempfile
 import os
+import time
 from typing import List, Tuple, Optional
 from frontend.services import api_client, state_manager
 
@@ -148,48 +149,152 @@ class DocumentUpload:
                 return error_msg, "", None
             
             def _format_file_list(rows: List[List[str]]) -> str:
+                """格式化文件列表为更易读的格式"""
                 if not rows:
                     return ""
-                lines = ["文件名\t状态\t文件ID", "---"]
-                for row in rows:
-                    lines.append("\t".join(str(c) for c in row))
+                
+                # 使用更清晰的格式
+                lines = ["📄 已上传文件列表:", ""]
+                for i, row in enumerate(rows, 1):
+                    filename, status, file_id = row
+                    lines.append(f"{i}. {filename}")
+                    lines.append(f"   状态: {status}")
+                    lines.append(f"   ID: {file_id}")
+                    lines.append("")  # 空行分隔
+                
                 return "\n".join(lines)
             
             # 处理成功响应
-            if isinstance(response, list):
-                # 多文件上传
+            logger.info(f"开始处理成功响应，响应类型: {type(response)}")
+            logger.info(f"响应内容: {response}")
+            
+            if isinstance(response, dict):
+                logger.info("响应是字典格式，开始解析...")
+                # 检查是否是多文件响应
+                if "data" in response:
+                    data = response["data"]
+                    logger.info(f"找到data字段: {data}")
+                else:
+                    data = response
+                    logger.info("没有data字段，直接使用响应")
+                
+                # 检查filename字段是否包含多个文件名
+                filename = data.get("filename", "")  # 从data字段获取
+                file_id = data.get("file_id", "")      # 从data字段获取
+                
+                logger.info(f"提取的filename: '{filename}'")
+                logger.info(f"提取的file_id: '{file_id}'")
+                
+                if "," in filename and "," in file_id:
+                    # 多文件响应
+                    logger.info(f"检测到多文件响应: {filename}")
+                    filenames = [f.strip() for f in filename.split(",")]
+                    file_ids = [f.strip() for f in file_id.split(",")]
+                    
+                    results = []
+                    for i, (fname, fid) in enumerate(zip(filenames, file_ids)):
+                        # 增强文件名提取逻辑
+                        logger.info(f"处理文件 {i+1}: 原始文件名='{fname}', 提取文件名...")
+                        filename_clean = self._extract_filename(files[i], f"文件{i+1}")
+                        logger.info(f"提取的文件名: '{filename_clean}'")
+                        
+                        state_manager.add_uploaded_file({
+                            "filename": fname,  # 使用后端返回的文件名
+                            "file_id": fid,
+                            "status": "success"
+                        })
+                        results.append([fname, "✅ 成功", fid])
+                    
+                    success_msg = f"✅ 成功上传 {len(results)} 个文件:\n" + "\n".join([f"• {result[0]}" for result in results])
+                    logger.info(success_msg)
+                    return success_msg, _format_file_list(results), None
+                else:
+                    # 单文件响应
+                    filename_clean = self._extract_filename(files[0], "上传的文件")
+                    state_manager.add_uploaded_file({
+                        "filename": filename,
+                        "file_id": file_id,
+                        "status": "success"
+                    })
+                    result = [[filename, "✅ 成功", file_id]]
+                    success_msg = f"✅ 成功上传文件: {filename}"
+                    logger.info(success_msg)
+                    return success_msg, _format_file_list(result), None
+            
+            elif isinstance(response, list):
+                # 直接的列表响应（备用方案）
+                logger.info(f"处理列表响应，文件数量: {len(response)}")
                 results = []
                 for i, file_info in enumerate(response):
-                    filename = files[i].orig_name if hasattr(files[i], 'orig_name') else f"文件{i+1}"
-                    file_id = file_info.get("file_id", "unknown")
+                    logger.info(f"处理文件 {i+1}: {file_info}")
+                    # 增强文件名提取逻辑
+                    filename = self._extract_filename(files[i], f"文件{i+1}")
+                    file_id = file_info.get("file_id", f"file_{i+1}")
+                    logger.info(f"文件 {i+1} - 文件名: {filename}, ID: {file_id}")
+                    
                     state_manager.add_uploaded_file({
                         "filename": filename,
                         "file_id": file_id,
                         "status": "success"
                     })
                     results.append([filename, "✅ 成功", file_id])
-                success_msg = f"✅ 成功上传 {len(results)} 个文件"
+                
+                logger.info(f"多文件结果: {results}")
+                success_msg = f"✅ 成功上传 {len(results)} 个文件:\n" + "\n".join([f"• {result[0]}" for result in results])
                 logger.info(success_msg)
                 return success_msg, _format_file_list(results), None
-            
-            else:
-                # 单文件上传
-                filename = files[0].orig_name if hasattr(files[0], 'orig_name') else "上传的文件"
-                file_id = response.get("file_id", "unknown")
-                state_manager.add_uploaded_file({
-                    "filename": filename,
-                    "file_id": file_id,
-                    "status": "success"
-                })
-                result = [[filename, "✅ 成功", file_id]]
-                success_msg = f"✅ 成功上传文件: {filename}"
-                logger.info(success_msg)
-                return success_msg, _format_file_list(result), None
         
         except Exception as e:
             logger.error(f"上传文档时出错: {e}", exc_info=True)
             error_msg = f"❌ 上传失败: {str(e)}"
             return error_msg, "", None
+    
+    def _extract_filename(self, file_obj, default_name="上传的文件"):
+        """增强的文件名提取逻辑"""
+        # 尝试多种方式获取文件名
+        filename_candidates = []
+        
+        # 方法1：orig_name属性
+        if hasattr(file_obj, 'orig_name') and file_obj.orig_name:
+            filename_candidates.append(file_obj.orig_name)
+            logger.info(f"找到orig_name: {file_obj.orig_name}")
+        
+        # 方法2：name属性
+        if hasattr(file_obj, 'name') and file_obj.name:
+            # 如果是路径，提取文件名
+            if isinstance(file_obj.name, str) and os.path.sep in file_obj.name:
+                extracted_name = os.path.basename(file_obj.name)
+                filename_candidates.append(extracted_name)
+                logger.info(f"从路径提取文件名: {extracted_name}")
+            else:
+                filename_candidates.append(file_obj.name)
+                logger.info(f"找到name: {file_obj.name}")
+        
+        # 方法3：file_path属性
+        if hasattr(file_obj, 'file_path') and file_obj.file_path:
+            if isinstance(file_obj.file_path, str) and os.path.sep in file_obj.file_path:
+                extracted_name = os.path.basename(file_obj.file_path)
+                filename_candidates.append(extracted_name)
+                logger.info(f"从file_path提取文件名: {extracted_name}")
+        
+        # 方法4：字典结构
+        if isinstance(file_obj, dict):
+            for key in ['name', 'filename', 'orig_name', 'file_name']:
+                if key in file_obj and file_obj[key]:
+                    filename_candidates.append(file_obj[key])
+                    logger.info(f"从字典提取文件名({key}): {file_obj[key]}")
+        
+        # 选择最佳候选
+        for filename in filename_candidates:
+            if filename and filename != "上传的文件":
+                # 清理文件名，移除路径部分
+                clean_name = os.path.basename(str(filename)) if os.path.sep in str(filename) else str(filename)
+                if clean_name and clean_name != ".":
+                    logger.info(f"最终文件名: {clean_name}")
+                    return clean_name
+        
+        logger.warning(f"无法提取文件名，使用默认值: {default_name}")
+        return default_name
     
     def _clear_files(self) -> Tuple[Optional[List], str, str]:
         """清空文件列表。返回 (file_input, 状态文案, 文件列表文案)。"""

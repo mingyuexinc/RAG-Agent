@@ -124,9 +124,6 @@ class APIClient:
                     file_size = path_obj.stat().st_size
                     logger.info(f"文件 {i+1}: {file_path}, 大小: {file_size} bytes")
                     
-                    # 打开文件
-                    file_obj = open(file_path, "rb")
-                    files.append(("files", file_obj))
                     valid_files.append(file_path)
                 else:
                     logger.error(f"文件不存在或不是文件: {file_path}")
@@ -135,34 +132,42 @@ class APIClient:
                 logger.error(f"处理文件 {file_path} 时出错: {e}")
                 continue
         
-        if not files:
+        if not valid_files:
             logger.error("没有找到有效文件")
             return {"error": "没有找到有效文件"}
         
         try:
-            logger.info(f"准备上传 {len(files)} 个有效文件")
+            logger.info(f"准备上传 {len(valid_files)} 个有效文件")
             
             # 记录文件信息
-            for i, (field_name, file_obj) in enumerate(files):
-                file_name = Path(valid_files[i]).name
+            for i, file_path in enumerate(valid_files):
+                file_name = Path(file_path).name
                 logger.info(f"上传文件 {i+1}: {file_name}")
+            
+            # 使用正确的文件上传格式
+            upload_files = []
+            for i, file_path in enumerate(valid_files):
+                file_name = Path(file_path).name
+                # 重新打开文件确保文件指针在开始位置
+                file_obj = open(file_path, 'rb')
+                upload_files.append(('files', (file_name, file_obj, 'application/octet-stream')))
             
             response = self._make_request(
                 "POST",
                 "/upload", 
-                files=files
+                files=upload_files
             )
+            
+            # 关闭文件
+            for _, (_, file_obj, _) in upload_files:
+                file_obj.close()
             
             logger.info(f"上传完成，响应: {response}")
             return response
             
         finally:
-            # 确保所有文件都被关闭
-            for field_name, file_obj in files:
-                try:
-                    file_obj.close()
-                except:
-                    pass
+            # 清理资源（现在在upload_files中处理）
+            pass
     
     def health_check(self) -> bool:
         """检查API健康状态"""
