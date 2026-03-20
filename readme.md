@@ -1,7 +1,24 @@
 # Enterprise-level Agent Knowledge Base Assistant
 
 ## packages:
-    see requirements.txt
+    python==3.10
+    fastapi==0.121.2
+    uvicorn[standard]==0.38.0
+    pypdf2==3.0.1
+    langchain==1.0.2
+    langchain-openai==1.0.1
+    langchain-community==0.3.31
+    langchain-text-splitters==1.0.0
+    python-multipart==0.0.20
+    dashscope==1.24.7
+    faiss-cpu==1.12.0
+    pinecone==6.0.2
+    ragas==0.4.2
+    gradio==5.30.0
+    gradio-client==1.10.1
+    Pillow==10.3.0
+    aiohttp==3.9.5
+    numpy>=1.26.4
 
 ## instruction:
     An intelligent agent assistant that supports knowledge retrieval, summary generation, and flowchart generation 
