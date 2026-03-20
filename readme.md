@@ -36,7 +36,8 @@
 
 3. Start the frontend interface:
     ```bash
-    python start_frontend.py
+    cd frontend
+    python main.py
     ```
     The frontend will be available at `http://localhost:7860`
 
