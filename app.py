@@ -63,10 +63,9 @@ def start_backend_server():
         # 检查后端是否启动成功
         try:
             import requests
-            import time
             
             # 尝试多个端口
-            ports_to_try = [8000, 15181]
+            ports_to_try = [8001, 8000, 15181]  # 优先检查8001
             backend_url = None
             
             for port in ports_to_try:
