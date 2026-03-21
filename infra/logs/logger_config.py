@@ -1,72 +1,46 @@
 """
 统一日志配置 - RAG Agent
 """
-import logging
-from pathlib import Path
-import os
-from logging.handlers import RotatingFileHandler
-
 
 def setup_logger(name: str, log_level: str = "INFO"):
-    """
-    统一的日志配置函数
-    
-    Args:
-        name: 日志器名称
-        log_level: 日志级别 (DEBUG, INFO, WARNING, ERROR, CRITICAL)
-    
-    Returns:
-        logger: 配置好的日志器
-    """
     import os
-    
-    # 启动时自动创建目录 - 使用绝对路径
-    project_root = Path(__file__).parent.parent.parent
-    log_dir = os.path.join(str(project_root), "logs")
+    import logging
+    from logging.handlers import RotatingFileHandler
+
+    # 用 cwd，避免 __file__ 坑
+    log_dir = os.path.join(os.getcwd(), "logs")
     os.makedirs(log_dir, exist_ok=True)
-    
-    # 创建日志器
+
     logger = logging.getLogger(name)
-    
-    # 避免重复添加handler
+
     if logger.handlers:
         return logger
-    
-    # 设置日志级别
-    level_map = {
-        "DEBUG": logging.DEBUG,
-        "INFO": logging.INFO,
-        "WARNING": logging.WARNING,
-        "ERROR": logging.ERROR,
-        "CRITICAL": logging.CRITICAL
-    }
-    logger.setLevel(level_map.get(log_level.upper(), logging.INFO))
-    
-    # 文件处理器 - 统一日志文件
+
+    logger.setLevel(getattr(logging, log_level.upper(), logging.INFO))
+
     log_file = os.path.join(log_dir, f"rag_agent_{name.lower()}.log")
+
+    # 👇 delay=True 防止初始化时报错
     file_handler = RotatingFileHandler(
         log_file,
-        maxBytes=1024*1024*10,  # 10MB
+        maxBytes=10 * 1024 * 1024,
         backupCount=5,
-        encoding='utf-8'
+        encoding='utf-8',
+        delay=True
     )
-    
-    # 控制台处理器
+
     console_handler = logging.StreamHandler()
-    
-    # 统一格式
+
     formatter = logging.Formatter(
-        '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S'
+        '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     )
-    
+
     file_handler.setFormatter(formatter)
     console_handler.setFormatter(formatter)
-    
-    # 添加处理器
+
     logger.addHandler(file_handler)
     logger.addHandler(console_handler)
-    
+
     return logger
 
 
