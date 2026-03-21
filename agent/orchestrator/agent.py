@@ -14,6 +14,7 @@ from tools.base import BaseTool
 
 # 添加agent模块日志
 logger = get_logger("agent.orchestrator")
+print("[VERSION] Agent orchestrator updated at 2026-03-21 22:10")
 
 
 class DocAgent:
@@ -128,8 +129,11 @@ class DocAgent:
                         # 检查解析后的参数是否有效
                         if tool_name == "summarizer":
                             documents = resolved_params.get("documents")
+                            logger.info(f"[DEBUG] summarizer参数检查: documents={documents}, type={type(documents)}")
                             if not documents or len(documents) == 0:
-                                logger.error(f"summarizer工具缺少documents参数或参数为空: {resolved_params}")
+                                error_msg = f"summarizer工具缺少documents参数或参数为空: {resolved_params}"
+                                logger.info(f"[ERROR] {error_msg}")
+                                print(f"[ERROR] {error_msg}")  # 强制输出到控制台
                                 raise ValueError("summarizer tool requires non-empty documents parameter")
                         
                         if tool_name == "knowledge_search":
@@ -155,9 +159,13 @@ class DocAgent:
                         
                         if success:
                             logger.info(f"工具 {tool_name} 执行成功")
+                            print(f"[INFO] 工具 {tool_name} 执行成功")
                         else:
-                            logger.error(f"工具 {tool_name} 执行失败: {result.get('error', 'Unknown error')}")
-                            logger.error(f"工具 {tool_name} 将进行重试，当前重试次数: {retry_count}/{self.max_retries}")
+                            error_msg = f"工具 {tool_name} 执行失败: {result.get('error', 'Unknown error')}"
+                            logger.info(f"[ERROR] {error_msg}")
+                            logger.info(f"[ERROR] 工具 {tool_name} 将进行重试，当前重试次数: {retry_count}/{self.max_retries}")
+                            print(f"[ERROR] {error_msg}")
+                            print(f"[ERROR] 工具 {tool_name} 将进行重试，当前重试次数: {retry_count}/{self.max_retries}")
                         
                     except Exception as e:
                         logger.error(f"工具 {tool_name} 执行失败 (重试 {retry_count + 1}/{self.max_retries}): {e}")
