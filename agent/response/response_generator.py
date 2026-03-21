@@ -9,7 +9,7 @@ from agent.prompts.prompt_manager import PromptManager
 from agent.state.state_manager import AgentState
 from app.api.schemas_response import QueryRequest, QueryResponse
 from infra.config.app_config import AppConfig
-from services.image_service import image_service
+from services.image_service import get_image_service
 from services.cache_manager import cache_manager
 
 
@@ -88,11 +88,8 @@ class ResponseGenerator:
             }
         
         try:
-            # 在ModelScope环境中重新初始化图片服务，确保使用正确配置
-            import os
-            if '/home/studio_service' in os.getcwd() or '/home/studio_service' in os.getenv('PWD', ''):
-                from services.image_service import reinitialize_image_service
-                reinitialize_image_service()
+            # 每次都创建新的图片服务实例
+            image_service = get_image_service()
             
             image_result = await image_service.process_flowchart_image(chart_url)
             

@@ -242,13 +242,14 @@ class ImageService:
             if local_path.exists():
                 logger.info(f"使用缓存的图片: {local_path}")
                 
-                # 计算API路径
+                # 构造标准的API访问路径
                 try:
-                    relative_path = local_path.relative_to(self.base_dir)
-                    api_path = f"/file/{relative_path}"
+                    filename = local_path.name
+                    api_path = f"/file/save_pic/2026/{filename}"
+                    logger.info(f"缓存图片API路径: {api_path}")
                 except Exception as e:
-                    logger.warning(f"计算缓存图片相对路径失败: {e}")
-                    api_path = str(local_path)
+                    logger.error(f"构造缓存图片API路径失败: {e}")
+                    api_path = None
                 
                 return {
                     "success": True,
@@ -274,13 +275,14 @@ class ImageService:
                     latest_image = max(cached_images, key=lambda f: f.stat().st_mtime)
                     logger.info(f"使用备用缓存图片: {latest_image}")
                     
-                    # 计算API路径
+                    # 构造标准的API访问路径
                     try:
-                        relative_path = latest_image.relative_to(self.base_dir)
-                        api_path = f"/file/{relative_path}"
+                        filename = latest_image.name
+                        api_path = f"/file/save_pic/2026/{filename}"
+                        logger.info(f"备用缓存图片API路径: {api_path}")
                     except Exception as e:
-                        logger.warning(f"计算备用缓存图片相对路径失败: {e}")
-                        api_path = str(latest_image)
+                        logger.error(f"构造备用缓存图片API路径失败: {e}")
+                        api_path = None
                     
                     return {
                         "success": True,
@@ -317,16 +319,17 @@ class ImageService:
             # 保存图片
             logger.info(f"开始保存图片到: {local_path}")
             if self.save_image(optimized_data, local_path):
-                # 计算相对路径，供前端通过API访问
+                # 确保返回真实可访问的URL
                 try:
-                    # 计算相对于项目根目录的路径
-                    relative_path = local_path.relative_to(self.base_dir)
-                    # 转换为URL路径格式
-                    api_path = f"/file/{relative_path}"
+                    # 获取文件名
+                    filename = local_path.name
+                    # 构造标准的API访问路径
+                    api_path = f"/file/save_pic/2026/{filename}"
                     logger.info(f"图片API路径: {api_path}")
+                    logger.info(f"图片本地路径: {local_path}")
                 except Exception as e:
-                    logger.warning(f"计算相对路径失败，使用绝对路径: {e}")
-                    api_path = str(local_path)
+                    logger.error(f"构造API路径失败: {e}")
+                    api_path = None
                 
                 return {
                     "success": True,
@@ -422,17 +425,6 @@ class ImageService:
             return {"error": str(e)}
 
 
-# 全局实例
-image_service = ImageService()
-
-def reinitialize_image_service():
-    """重新初始化图片服务（解决缓存问题）"""
-    global image_service
-    image_service = ImageService()
-    logger.info("图片服务已重新初始化")
-
-# 在模块加载时检查是否需要重新初始化
-import os
-if '/home/studio_service' in os.getcwd() or '/home/studio_service' in os.getenv('PWD', ''):
-    # ModelScope环境，确保使用正确的配置
-    reinitialize_image_service()
+# 工厂函数 - 每次调用都创建新实例
+def get_image_service():
+    return ImageService()
