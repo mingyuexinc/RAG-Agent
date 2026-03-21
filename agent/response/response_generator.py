@@ -88,6 +88,12 @@ class ResponseGenerator:
             }
         
         try:
+            # 在ModelScope环境中重新初始化图片服务，确保使用正确配置
+            import os
+            if '/home/studio_service' in os.getcwd() or '/home/studio_service' in os.getenv('PWD', ''):
+                from services.image_service import reinitialize_image_service
+                reinitialize_image_service()
+            
             image_result = await image_service.process_flowchart_image(chart_url)
             
             if image_result["success"]:

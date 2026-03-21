@@ -18,14 +18,32 @@ class CacheManager:
     def __init__(self, cache_file: str = "data/save_pic/cache.json"):
         # 智能获取项目根目录
         import os
-        current_cwd = os.getcwd()
+        try:
+            current_cwd = os.getcwd()
+        except OSError:
+            # 如果无法获取当前工作目录，使用项目根目录
+            current_cwd = str(Path(__file__).parent.parent.parent)
+            logger.warning(f"无法获取当前工作目录，使用项目根目录: {current_cwd}")
+        
         if str(current_cwd).endswith('app'):
             project_root = Path(current_cwd).parent
         else:
             project_root = Path(current_cwd)
         
         self.cache_file = project_root / cache_file
-        self.cache_file.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            self.cache_file.parent.mkdir(parents=True, exist_ok=True)
+            logger.info(f"缓存目录创建成功: {self.cache_file.parent}")
+        except Exception as e:
+            logger.error(f"缓存目录创建失败: {e}")
+            # 尝试使用绝对路径
+            try:
+                abs_parent = self.cache_file.parent.resolve()
+                abs_parent.mkdir(parents=True, exist_ok=True)
+                logger.info(f"使用绝对路径创建缓存目录成功: {abs_parent}")
+            except Exception as e2:
+                logger.error(f"绝对路径创建缓存目录也失败: {e2}")
+        
         self.cache_data = self._load_cache()
     
     def _load_cache(self) -> Dict[str, Any]:

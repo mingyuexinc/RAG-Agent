@@ -424,3 +424,15 @@ class ImageService:
 
 # 全局实例
 image_service = ImageService()
+
+def reinitialize_image_service():
+    """重新初始化图片服务（解决缓存问题）"""
+    global image_service
+    image_service = ImageService()
+    logger.info("图片服务已重新初始化")
+
+# 在模块加载时检查是否需要重新初始化
+import os
+if '/home/studio_service' in os.getcwd() or '/home/studio_service' in os.getenv('PWD', ''):
+    # ModelScope环境，确保使用正确的配置
+    reinitialize_image_service()
