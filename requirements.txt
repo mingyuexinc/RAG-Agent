@@ -1,15 +1,26 @@
+# 基础工具
 pypdf2==3.0.1
+python-multipart==0.0.20
+Pillow==10.3.0
 
+# Gradio 前端
+gradio==5.29.0
+gradio-client==1.10.1
+uvicorn==0.23.2
+
+# OpenAI 与 LangChain
+openai==2.29.0
 langchain==1.0.2
 langchain-openai==1.0.1
 langchain-community==0.3.31
 langchain-text-splitters==1.0.0
 
-python-multipart==0.0.20
-dashscope==1.24.7
-
+# Pinecone
 pinecone==6.0.2
 
-gradio-client==1.10.1
-Pillow==10.3.0
+# 其他必要依赖
+typing-extensions==4.15.0
+huggingface-hub==0.16.4
+typer<0.10.0
+dashscope==1.24.7
 
