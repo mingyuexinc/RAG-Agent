@@ -12,9 +12,9 @@ from PIL import Image
 import io
 from datetime import datetime, timedelta
 
-from infra.logs.logger_config import setup_logger
+from infra.logs.logger_config import get_logger
 
-logger = setup_logger("services.image_service")
+logger = get_logger("services.image_service")
 
 
 class ImageService:

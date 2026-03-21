@@ -4,10 +4,10 @@ from datetime import datetime
 from typing import Any, Dict
 
 from agent.orchestrator.executor import ExecutionContext
-from infra.logs.logger_config import setup_logger
+from infra.logs.logger_config import get_logger
 
 # 添加状态管理日志
-logger = setup_logger("agent.state_manager")
+logger = get_logger("agent.state_manager")
 
 
 @dataclass

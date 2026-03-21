@@ -7,13 +7,13 @@ from agent.orchestrator.executor import ExecutionPlan, ExecutionResult, Executio
 from agent.state.session_manager import SessionManager
 from agent.state.state_manager import AgentStateManager
 from infra.config.app_config import AppConfig
-from infra.logs.logger_config import setup_logger
+from infra.logs.logger_config import get_logger
 
 from llm.model import ModelManager
 from tools.base import BaseTool
 
 # 添加agent模块日志
-logger = setup_logger("agent.orchestrator")
+logger = get_logger("agent.orchestrator")
 
 
 class DocAgent:

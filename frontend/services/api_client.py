@@ -6,10 +6,10 @@ import requests
 from typing import Dict, Any, Optional, List
 from pathlib import Path
 
-from infra.logs.logger_config import setup_logger
+from infra.logs.logger_config import get_logger
 
 # 使用统一的日志配置
-logger = setup_logger("frontend.services.api_client")
+logger = get_logger("frontend.services.api_client")
 
 
 class APIClient:

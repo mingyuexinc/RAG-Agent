@@ -5,7 +5,7 @@ import uuid
 from typing import List, Dict, Any, Optional
 from pathlib import Path
 
-from infra.logs.logger_config import setup_logger
+from infra.logs.logger_config import get_logger
 from rag.ingestion.loaders.base_loader import BaseLoader
 from rag.ingestion.loaders.pdf_loader import PDFLoader
 from rag.ingestion.loaders.loader_factory import get_loader
@@ -15,7 +15,7 @@ from rag.ingestion.splitters.base_splitter import BaseSplitter, TextSplitter
 from rag.ingestion.preprocessors.metadata_extractor import DocumentMetadata
 from rag.ingestion.document_manager import DocumentManager
 
-logger = setup_logger("rag.ingestion.pipeline")
+logger = get_logger("rag.ingestion.pipeline")
 
 class DocumentIngestionPipeline:
     """文档摄入流水线"""

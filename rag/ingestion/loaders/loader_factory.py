@@ -1,13 +1,13 @@
 import logging
 from typing import Optional
 
-from infra.logs.logger_config import setup_logger
+from infra.logs.logger_config import get_logger
 from rag.ingestion.loaders.base_loader import BaseLoader
 from rag.ingestion.loaders.pdf_loader import PDFLoader
 from rag.ingestion.loaders.text_loader import TextLoader
 
 
-logger = setup_logger("rag.ingestion.loaders")
+logger = get_logger("rag.ingestion.loaders")
 
 class LoaderFactory:
     """文档加载器工厂"""

@@ -2,12 +2,12 @@ import logging
 from typing import Tuple, List
 from PyPDF2 import PdfReader
 
-from infra.logs.logger_config import setup_logger
+from infra.logs.logger_config import get_logger
 from rag.ingestion.loaders.base_loader import BaseLoader
 from rag.ingestion.splitters.fixed_size_splitter import fixed_size_splitter
 
 
-logger = setup_logger("rag.ingestion.loaders")
+logger = get_logger("rag.ingestion.loaders")
 
 class PDFLoader(BaseLoader):
     """PDF文档加载器"""

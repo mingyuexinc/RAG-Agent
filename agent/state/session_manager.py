@@ -4,10 +4,10 @@ from datetime import datetime
 
 from agent.orchestrator.executor import ExecutionContext
 from infra.config.app_config import AppConfig
-from infra.logs.logger_config import setup_logger
+from infra.logs.logger_config import get_logger
 
 # 添加会话管理日志
-logger = setup_logger("agent.session_manager")
+logger = get_logger("agent.session_manager")
 
 
 class SessionManager:

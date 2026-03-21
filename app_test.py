@@ -13,6 +13,10 @@ from pathlib import Path
 project_root = Path(__file__).resolve().parent
 sys.path.insert(0, str(project_root))
 
+# 初始化日志系统 - 在应用入口处调用
+from infra.logs.logger_config import initialize_log_system
+initialize_log_system()
+
 # ModelScope演示函数
 def modelscope_quickstart(name):
     """ModelScope快速启动函数"""

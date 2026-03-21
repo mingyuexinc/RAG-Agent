@@ -7,12 +7,12 @@ from pinecone import Pinecone, ServerlessSpec
 from langchain_community.embeddings import DashScopeEmbeddings
 
 from infra.config.app_config import AppConfig
-from infra.logs.logger_config import setup_logger
+from infra.logs.logger_config import get_logger
 
 # 加载环境变量
 load_dotenv()
 
-logger = setup_logger("rag.pinecone_store")
+logger = get_logger("rag.pinecone_store")
 
 
 class PineconeStore:

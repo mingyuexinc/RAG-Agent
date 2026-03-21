@@ -5,10 +5,10 @@ import gradio as gr
 from typing import Tuple, Optional, List, Dict
 from frontend.services import api_client, state_manager
 from frontend.components.image_display import ImageDisplay
-from infra.logs.logger_config import setup_logger
+from infra.logs.logger_config import get_logger
 
 # 使用统一的日志配置
-logger = setup_logger("frontend.components.chat_interface")
+logger = get_logger("frontend.components.chat_interface")
 
 
 class ChatInterface:

@@ -2,11 +2,11 @@ from typing import Dict, Any, Optional
 
 from agent.orchestrator.executor import ExecutionContext
 from agent.response.tool_result import ToolResult
-from infra.logs.logger_config import setup_logger
+from infra.logs.logger_config import get_logger
 from tools.base import BaseTool
 from rag.retrieval.vector_retriever import retrieve_with_score
 
-logger = setup_logger("knowledge_search")
+logger = get_logger("knowledge_search")
 
 
 class KnowledgeSearchTool(BaseTool):

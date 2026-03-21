@@ -5,10 +5,10 @@ from dataclasses import dataclass
 from typing import List, Dict, Any, Optional
 import datetime
 
-from infra.logs.logger_config import setup_logger
+from infra.logs.logger_config import get_logger
 
 # 使用统一的日志配置
-logger = setup_logger("frontend.services.state_manager")
+logger = get_logger("frontend.services.state_manager")
 
 
 @dataclass

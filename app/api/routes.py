@@ -15,7 +15,7 @@ from agent.orchestrator.planner import TaskPlanner
 from app.api.schemas_response import QueryResponse, QueryRequest, UploadResponse
 from infra.config.app_config import AppConfig
 from infra.container import AppContainer
-from infra.logs.logger_config import setup_logger
+from infra.logs.logger_config import get_logger
 
 from agent.response.response_generator import process_tool_result
 
@@ -24,7 +24,7 @@ from rag.ingestion.pipeline import create_default_pipeline
 
 
 # 使用统一的日志配置
-logger = setup_logger("api_server_tool_execute")
+logger = get_logger("api_server_tool_execute")
 
 app = FastAPI(title="RAG Agent", version="1.0.3")
 

@@ -1,9 +1,9 @@
 from typing import Dict, Any, Optional, List, Tuple
 
-from infra.logs.logger_config import setup_logger
+from infra.logs.logger_config import get_logger
 from rag.vector_store.pinecone_store import PineconeStore
 
-logger = setup_logger("rag.vector_retriever")
+logger = get_logger("rag.vector_retriever")
 
 
 def _parse_query_rules(query: str) -> Optional[Dict[str, Any]]:

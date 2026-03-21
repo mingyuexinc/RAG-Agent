@@ -1,6 +1,6 @@
 from agent.orchestrator.agent import DocAgent
 from infra.config.app_config import AppConfig
-from infra.logs.logger_config import setup_logger
+from infra.logs.logger_config import get_logger
 from rag.embeddings.embedding import build_embedding
 from tools.generation.flow_chart import ChartGenTool
 from tools.knowledge.search import KnowledgeSearchTool
@@ -11,7 +11,7 @@ from rag.vector_store.pinecone_store import get_pinecone_store
 # 配置开关：使用哪个向量库
 USE_PINECONE = True  # 设置为 True 使用 Pinecone，False 使用 FAISS
 
-logger = setup_logger("infra.container")
+logger = get_logger("infra.container")
 
 class AppContainer:
     _doc_agent: DocAgent = None

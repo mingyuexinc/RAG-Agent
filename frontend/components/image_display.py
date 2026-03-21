@@ -5,9 +5,9 @@
 from typing import Dict, List
 from pathlib import Path
 
-from infra.logs.logger_config import setup_logger
+from infra.logs.logger_config import get_logger
 
-logger = setup_logger("frontend.components.image_display")
+logger = get_logger("frontend.components.image_display")
 
 
 class ImageDisplay:

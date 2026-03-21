@@ -7,12 +7,12 @@ from pathlib import Path
 from typing import List, Tuple, Dict, Any, Optional
 
 from infra.config.app_config import AppConfig
-from infra.logs.logger_config import setup_logger
+from infra.logs.logger_config import get_logger
 from rag.ingestion.loaders.pdf_loader import data_loader_core
 from rag.ingestion.preprocessors.metadata_extractor import DocumentMetadata, MetadataExtractor
 
 # 使用项目统一的 logger 配置
-logger = setup_logger("rag.data_loader")
+logger = get_logger("rag.data_loader")
 
 class DocumentManager:
     """文档管理器，负责文档的元数据管理和去重"""

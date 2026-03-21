@@ -7,9 +7,9 @@ from typing import Tuple, Optional, Union
 from PIL import Image, ImageEnhance, ImageFilter
 import numpy as np
 
-from infra.logs.logger_config import setup_logger
+from infra.logs.logger_config import get_logger
 
-logger = setup_logger("services.image_processor")
+logger = get_logger("services.image_processor")
 
 
 class ImageProcessor:

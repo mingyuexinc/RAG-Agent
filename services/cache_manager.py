@@ -7,9 +7,9 @@ from pathlib import Path
 from typing import Dict, Any, Optional
 from datetime import datetime
 
-from infra.logs.logger_config import setup_logger
+from infra.logs.logger_config import get_logger
 
-logger = setup_logger("services.cache_manager")
+logger = get_logger("services.cache_manager")
 
 
 class CacheManager:

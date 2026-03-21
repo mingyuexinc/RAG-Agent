@@ -6,11 +6,11 @@ from langchain_community.embeddings import DashScopeEmbeddings
 from langchain_community.vectorstores import FAISS
 
 from infra.config.app_config import AppConfig
-from infra.logs.logger_config import setup_logger
+from infra.logs.logger_config import get_logger
 from rag.embeddings.embedding import build_embedding
 
 # 使用项目统一的 logger 配置
-logger = setup_logger("rag.vector_store")
+logger = get_logger("rag.vector_store")
 
 
 def get_vector_database(chunks:List[str],embeddings:DashScopeEmbeddings, save_path:str = None)->FAISS:

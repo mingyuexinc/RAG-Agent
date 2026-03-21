@@ -135,8 +135,8 @@ class ResponseGenerator:
                 
         except Exception as e:
             # 记录错误并返回失败响应
-            from infra.logs.logger_config import setup_logger
-            logger = setup_logger("agent.response")
+            from infra.logs.logger_config import get_logger
+            logger = get_logger("agent.response")
             logger.error(f"流程图图片处理失败: {e}")
             
             return {
