@@ -63,21 +63,36 @@ def start_backend_server():
         # 检查后端是否启动成功
         try:
             import requests
-            response = requests.get("http://127.0.0.1:8000/health", timeout=10)
-            if response.status_code == 200:
-                print("✅ 后端API服务器启动成功")
+            import time
+            
+            # 尝试多个端口
+            ports_to_try = [8000, 15181]
+            backend_url = None
+            
+            for port in ports_to_try:
+                try:
+                    response = requests.get(f"http://127.0.0.1:{port}/health", timeout=5)
+                    if response.status_code == 200:
+                        backend_url = f"http://127.0.0.1:{port}"
+                        print(f"✅ 后端API服务器启动成功，端口: {port}")
+                        break
+                except requests.exceptions.ConnectionError:
+                    continue
+                except Exception as e:
+                    print(f"端口 {port} 检查失败: {e}")
+                    continue
+            
+            if backend_url:
+                # 更新API客户端配置
+                from frontend.services import api_client
+                api_client.base_url = backend_url
+                print(f"✅ API客户端配置完成: {backend_url}")
                 return backend_process
             else:
-                print(f"❌ 后端API服务器响应异常: {response.status_code}")
-                # 尝试读取后端进程输出
-                try:
-                    stdout, stderr = backend_process.communicate(timeout=1)
-                    if stderr:
-                        print(f"后端错误: {stderr.decode()}")
-                except:
-                    pass
+                print("❌ 所有端口检查都失败")
                 return None
-        except requests.exceptions.RequestException as e:
+                
+        except Exception as e:
             print(f"❌ 后端API服务器连接失败: {e}")
             print("💡 请检查后端服务是否正常启动")
             # 尝试读取后端进程输出
@@ -112,11 +127,6 @@ def create_demo():
     try:
         # 导入并启动原有的前端应用
         from frontend.app import RAGAgentFrontend
-        
-        # 修改API客户端配置，确保连接到本地后端
-        from frontend.services import api_client
-        api_client.base_url = "http://127.0.0.1:8000"
-        print("✅ API客户端配置完成")
         
         frontend = RAGAgentFrontend()
         demo = frontend.create_interface()
