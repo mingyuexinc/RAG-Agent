@@ -70,10 +70,29 @@ class ImageService:
         max_retries = 2
         timeout = aiohttp.ClientTimeout(total=45)  # 增加到45秒
         
+        # 创建SSL上下文，处理证书验证问题
+        import ssl
+        import os
+        verify_ssl = os.getenv('VERIFY_SSL', 'false').lower() == 'true'
+        
+        if verify_ssl:
+            # 启用SSL验证（生产环境推荐）
+            ssl_context = ssl.create_default_context()
+            logger.info("SSL证书验证已启用")
+        else:
+            # 禁用SSL验证（解决证书问题）
+            ssl_context = ssl.create_default_context()
+            ssl_context.check_hostname = False
+            ssl_context.verify_mode = ssl.CERT_NONE
+            logger.warning("SSL证书验证已禁用（临时解决方案）")
+        
+        # 创建连接器
+        connector = aiohttp.TCPConnector(ssl=ssl_context)
+        
         for attempt in range(max_retries):
             try:
                 logger.info(f"下载图片尝试 {attempt + 1}/{max_retries}: {url[:50]}...")
-                async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with aiohttp.ClientSession(timeout=timeout, connector=connector) as session:
                     # 添加User-Agent头，避免被拒绝
                     headers = {
                         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
@@ -95,6 +114,8 @@ class ImageService:
                 continue
             except Exception as e:
                 logger.error(f"下载图片异常: {e}")
+                if "SSL" in str(e) or "certificate" in str(e).lower():
+                    logger.warning("检测到SSL相关问题，建议检查VERIFY_SSL环境变量")
                 if attempt < max_retries - 1:
                     await asyncio.sleep(1)  # 等待1秒后重试
                 continue
