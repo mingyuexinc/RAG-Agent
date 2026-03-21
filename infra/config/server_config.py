@@ -11,7 +11,18 @@ class ServerConfig(BaseConfig):
 
     # 服务器配置
     HOST = "127.0.0.1"
-    PORT = 8000
+    
+    @classmethod
+    def get_port(cls):
+        """根据环境返回不同端口"""
+        import os
+        # 简单检测：如果在/home/studio_service下，就是ModelScope环境
+        if '/home/studio_service' in os.getcwd() or '/home/studio_service' in os.getenv('PWD', ''):
+            return 8001
+        else:
+            return 8000
+    
+    PORT = get_port()  # 动态端口
     RELOAD = True
 
     # 基于当前文件位置动态计算模块路径

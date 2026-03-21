@@ -65,7 +65,17 @@ def start_backend_server():
             import requests
             
             # 尝试多个端口
-            ports_to_try = [8001, 8000, 15181]  # 优先检查8001
+            import os
+            # 检测是否在ModelScope环境
+            is_modelscope = '/home/studio_service' in os.getcwd() or '/home/studio_service' in os.getenv('PWD', '')
+            
+            if is_modelscope:
+                # ModelScope环境：优先检查8001
+                ports_to_try = [8001, 8000, 15181]
+            else:
+                # 本地环境：优先检查8000
+                ports_to_try = [8000, 8001, 15181]
+            
             backend_url = None
             
             for port in ports_to_try:

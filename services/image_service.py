@@ -26,13 +26,19 @@ class ImageService:
         from datetime import datetime
         
         # 直接使用临时目录，避免权限问题
-        temp_dir = Path(tempfile.gettempdir())
-        self.base_dir = temp_dir / "rag_agent_images"
-        self.base_dir.mkdir(exist_ok=True)
+        try:
+            self.base_dir = Path.cwd()
+        except Exception:
+            # 如果无法获取当前工作目录，使用项目根目录
+            self.base_dir = Path(__file__).parent.parent.parent
+        
+        # 使用项目data目录而不是临时目录
+        self.image_dir = self.base_dir / "data" / "save_pic"
+        self.image_dir.mkdir(parents=True, exist_ok=True)
         
         # 创建年度目录
-        current_year = datetime.now().year
-        self.current_year_dir = self.base_dir / str(current_year)
+        current_year = str(datetime.now().year)
+        self.current_year_dir = self.image_dir / current_year
         self.current_year_dir.mkdir(exist_ok=True)
         
         # 配置参数
@@ -42,7 +48,8 @@ class ImageService:
         self.max_storage_mb = 100
         
         logger.info(f"图片服务初始化完成")
-        logger.info(f"使用临时目录: {self.base_dir}")
+        logger.info(f"基础目录: {self.base_dir}")
+        logger.info(f"图片目录: {self.image_dir}")
         logger.info(f"年度目录: {self.current_year_dir}")
     
     def get_url_hash(self, url: str) -> str:
@@ -234,9 +241,19 @@ class ImageService:
             logger.info(f"缓存文件存在: {local_path.exists()}")
             if local_path.exists():
                 logger.info(f"使用缓存的图片: {local_path}")
+                
+                # 计算API路径
+                try:
+                    relative_path = local_path.relative_to(self.base_dir)
+                    api_path = f"/file/{relative_path}"
+                except Exception as e:
+                    logger.warning(f"计算缓存图片相对路径失败: {e}")
+                    api_path = str(local_path)
+                
                 return {
                     "success": True,
                     "local_path": str(local_path),
+                    "api_path": api_path,  # 前端通过API访问的路径
                     "url": chart_url,
                     "cached": True,
                     "file_size": local_path.stat().st_size
@@ -256,9 +273,19 @@ class ImageService:
                     # 使用最新的缓存图片
                     latest_image = max(cached_images, key=lambda f: f.stat().st_mtime)
                     logger.info(f"使用备用缓存图片: {latest_image}")
+                    
+                    # 计算API路径
+                    try:
+                        relative_path = latest_image.relative_to(self.base_dir)
+                        api_path = f"/file/{relative_path}"
+                    except Exception as e:
+                        logger.warning(f"计算备用缓存图片相对路径失败: {e}")
+                        api_path = str(latest_image)
+                    
                     return {
                         "success": True,
                         "local_path": str(latest_image),
+                        "api_path": api_path,  # 前端通过API访问的路径
                         "url": chart_url,
                         "cached": True,
                         "file_size": latest_image.stat().st_size,
@@ -290,9 +317,21 @@ class ImageService:
             # 保存图片
             logger.info(f"开始保存图片到: {local_path}")
             if self.save_image(optimized_data, local_path):
+                # 计算相对路径，供前端通过API访问
+                try:
+                    # 计算相对于项目根目录的路径
+                    relative_path = local_path.relative_to(self.base_dir)
+                    # 转换为URL路径格式
+                    api_path = f"/file/{relative_path}"
+                    logger.info(f"图片API路径: {api_path}")
+                except Exception as e:
+                    logger.warning(f"计算相对路径失败，使用绝对路径: {e}")
+                    api_path = str(local_path)
+                
                 return {
                     "success": True,
                     "local_path": str(local_path),
+                    "api_path": api_path,  # 前端通过API访问的路径
                     "url": chart_url,
                     "cached": False,
                     "original_size": len(image_data),
