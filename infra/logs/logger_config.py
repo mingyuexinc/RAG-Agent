@@ -24,11 +24,20 @@ def initialize_log_system():
     _log_dir = os.path.join(os.getcwd(), "logs")
     os.makedirs(_log_dir, exist_ok=True)
     _initialized = True
+    
+    # 升级所有已存在的临时logger
+    for name, logger in list(_initialized_loggers.items()):
+        # 移除临时控制台处理器
+        for handler in logger.handlers[:]:
+            logger.removeHandler(handler)
+        
+        # 重新创建完整的logger
+        _create_logger(name, "INFO")
 
 
 def get_logger(name: str, log_level: str = "INFO") -> logging.Logger:
     """
-    获取日志器 - 延迟初始化
+    获取日志器 - 支持延迟初始化
     
     Args:
         name: 日志器名称
@@ -41,10 +50,30 @@ def get_logger(name: str, log_level: str = "INFO") -> logging.Logger:
     if name in _initialized_loggers:
         return _initialized_loggers[name]
     
-    # 检查日志系统是否已初始化
+    # 如果日志系统未初始化，返回一个临时的控制台logger
     if not _initialized:
-        raise RuntimeError("日志系统未初始化，请先调用 initialize_log_system()")
+        # 创建临时的控制台logger
+        logger = logging.getLogger(name)
+        if not logger.handlers:
+            # 只添加控制台处理器
+            console_handler = logging.StreamHandler()
+            formatter = logging.Formatter(
+                '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+            )
+            console_handler.setFormatter(formatter)
+            logger.addHandler(console_handler)
+            logger.setLevel(getattr(logging, log_level.upper(), logging.INFO))
+        
+        # 缓存临时logger
+        _initialized_loggers[name] = logger
+        return logger
     
+    # 正常初始化流程
+    return _create_logger(name, log_level)
+
+
+def _create_logger(name: str, log_level: str) -> logging.Logger:
+    """创建完整的日志器（包含文件处理器）"""
     # 创建日志器
     logger = logging.getLogger(name)
     
