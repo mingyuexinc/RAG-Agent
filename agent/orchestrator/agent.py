@@ -126,9 +126,11 @@ class DocAgent:
                         logger.info(f"解析后参数: {resolved_params}")
                         
                         # 检查解析后的参数是否有效
-                        if tool_name == "summarizer" and not resolved_params.get("documents"):
-                            logger.error(f"summarizer工具缺少documents参数: {resolved_params}")
-                            raise ValueError("summarizer tool requires documents parameter")
+                        if tool_name == "summarizer":
+                            documents = resolved_params.get("documents")
+                            if not documents or len(documents) == 0:
+                                logger.error(f"summarizer工具缺少documents参数或参数为空: {resolved_params}")
+                                raise ValueError("summarizer tool requires non-empty documents parameter")
                         
                         if tool_name == "knowledge_search":
                             set_tool = True
@@ -144,6 +146,7 @@ class DocAgent:
                         
                         success = result.get("success", False)
                         logger.info(f"工具 {tool_name} 执行结果: {success}")
+                        logger.info(f"工具 {tool_name} 返回结果: {result}")
 
                         executed_tools.append(tool_name)
                         tool_results[tool_name] = result
@@ -154,6 +157,7 @@ class DocAgent:
                             logger.info(f"工具 {tool_name} 执行成功")
                         else:
                             logger.error(f"工具 {tool_name} 执行失败: {result.get('error', 'Unknown error')}")
+                            logger.error(f"工具 {tool_name} 将进行重试，当前重试次数: {retry_count}/{self.max_retries}")
                         
                     except Exception as e:
                         logger.error(f"工具 {tool_name} 执行失败 (重试 {retry_count + 1}/{self.max_retries}): {e}")
