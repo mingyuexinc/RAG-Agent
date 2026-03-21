@@ -1,4 +1,5 @@
 import uuid
+import time
 from copy import deepcopy
 from typing import Dict, Any, Optional
 
@@ -21,6 +22,7 @@ class DocAgent:
         self.max_steps = AppConfig.agent.MAX_STEPS
         self.max_retries = AppConfig.agent.MAX_RETRIES
         self.max_content_size = AppConfig.agent.MAX_CONTENT_SIZE
+        self.max_execution_time = 60  # 60秒超时
 
         self.session_manager = SessionManager()
         self.state_manager = AgentStateManager()
@@ -52,6 +54,8 @@ class DocAgent:
         logger.info(f"开始执行计划，session_id: {session_id}")
         logger.info(f"执行计划: {plan.task_type}, 工具: {plan.tools}")
 
+        start_time = time.time()
+        
         state = self.state_manager.load(session_id)
         if state is None:
             logger.error(f"状态未初始化，session_id: {session_id}")
@@ -88,9 +92,14 @@ class DocAgent:
 
         try:
             for tool_name in plan.tools:
+                # 检查超时
+                if time.time() - start_time > self.max_execution_time:
+                    logger.error(f"执行超时: {time.time() - start_time:.1f}s > {self.max_execution_time}s")
+                    raise ValueError(f"Execution timeout after {self.max_execution_time} seconds")
+                
                 if step_count >= self.max_steps:
                     logger.error(f"超过最大执行步数: {self.max_steps}")
-                    raise ValueError("Exceeded maximum execution steps: {self.max_step}")
+                    raise ValueError(f"Exceeded maximum execution steps: {self.max_steps}")
 
                 logger.info(f"执行工具: {tool_name} (步骤 {step_count + 1}/{self.max_steps})")
 
@@ -116,6 +125,11 @@ class DocAgent:
                         resolved_params = self._resolve_params(raw_params, state.working_context)
                         logger.info(f"解析后参数: {resolved_params}")
                         
+                        # 检查解析后的参数是否有效
+                        if tool_name == "summarizer" and not resolved_params.get("documents"):
+                            logger.error(f"summarizer工具缺少documents参数: {resolved_params}")
+                            raise ValueError("summarizer tool requires documents parameter")
+                        
                         if tool_name == "knowledge_search":
                             set_tool = True
                         else:
@@ -123,15 +137,23 @@ class DocAgent:
                         
                         logger.info(f"执行工具 {tool_name}...")
                         result = tool.run(resolved_params, state.working_context, set_tool)
-                        logger.info(f"工具 {tool_name} 执行结果: {result.get('success', False)}")
+                        
+                        if not isinstance(result, dict):
+                            logger.error(f"工具返回结果格式错误: {type(result)}")
+                            result = {"success": False, "error": "Invalid result format"}
+                        
+                        success = result.get("success", False)
+                        logger.info(f"工具 {tool_name} 执行结果: {success}")
 
                         executed_tools.append(tool_name)
                         tool_results[tool_name] = result
 
                         state.last_tool_results = tool_results
-                        success = result.get("success")
                         
-                        logger.info(f"工具 {tool_name} 执行成功")
+                        if success:
+                            logger.info(f"工具 {tool_name} 执行成功")
+                        else:
+                            logger.error(f"工具 {tool_name} 执行失败: {result.get('error', 'Unknown error')}")
                         
                     except Exception as e:
                         logger.error(f"工具 {tool_name} 执行失败 (重试 {retry_count + 1}/{self.max_retries}): {e}")
@@ -142,26 +164,28 @@ class DocAgent:
                         else:
                             logger.info(f"恢复到执行前状态并重试工具 {tool_name}")
                             executed_tools = state_snapshot["executed_tools"].copy()
-                            tool_results = state_snapshot["tool_results"].deepcopy()
-                            state.working_context = state_snapshot["context"].deepcopy()
+                            tool_results = state_snapshot["tool_results"].copy()
+                            state.working_context = deepcopy(state_snapshot["context"])
                 step_count += 1
 
-            logger.info(f"计划执行成功，执行工具: {executed_tools}")
+            execution_time = time.time() - start_time
+            logger.info(f"计划执行成功，执行工具: {executed_tools}, 耗时: {execution_time:.1f}s")
             return ExecutionResult(
-                success = True,
+                success=True,
                 task_type=plan.task_type,
-                executed_tools = executed_tools,
-                tool_results = tool_results,
+                executed_tools=executed_tools,
+                tool_results=tool_results,
             )
 
         except Exception as e:
-            logger.error(f"计划执行失败: {e}")
+            execution_time = time.time() - start_time
+            logger.error(f"计划执行失败: {e}, 耗时: {execution_time:.1f}s")
             return ExecutionResult(
-                success = False,
+                success=False,
                 task_type=plan.task_type,
-                executed_tools = executed_tools,
-                tool_results = tool_results,
-                error = str(e)
+                executed_tools=executed_tools,
+                tool_results=tool_results,
+                error=str(e)
             )
 
     def _resolve_params(self,params:Dict[str,Any],context:ExecutionContext) -> Dict[str,Any]:
