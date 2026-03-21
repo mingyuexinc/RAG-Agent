@@ -66,10 +66,13 @@ def start_backend_server():
             
             # 尝试多个端口
             import os
-            # 检测是否在ModelScope环境
-            is_modelscope = '/home/studio_service' in os.getcwd() or '/home/studio_service' in os.getenv('PWD', '')
+            from infra.config.server_config import ServerConfig
             
-            if is_modelscope:
+            # 获取当前环境应该使用的端口
+            expected_port = ServerConfig.get_port()
+            
+            # 构建端口检测列表，优先检测预期端口
+            if expected_port == 8001:
                 # ModelScope环境：优先检查8001
                 ports_to_try = [8001, 8000, 15181]
             else:

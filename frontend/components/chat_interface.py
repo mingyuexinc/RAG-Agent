@@ -102,8 +102,10 @@ class ChatInterface:
                 answer = response.get("answer", "抱歉，我无法回答这个问题。")
                 task_type = response.get("task_type", "unknown")
                 
-                # 处理流程图生成任务
+                # 初始化assistant_content
                 assistant_content = None
+                
+                # 处理流程图生成任务
                 if task_type == "flowchart_generation" and "payload" in response:
                     payload = response["payload"]
                     chart_url = payload.get("chart_url")

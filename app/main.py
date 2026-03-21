@@ -7,6 +7,6 @@ if __name__ == "__main__":
     uvicorn.run(
         server_config.get_app_path(),
         host=server_config.HOST,
-        port=server_config.PORT,
+        port=server_config.get_port(),  # 使用方法而非属性
         reload=server_config.RELOAD
     )

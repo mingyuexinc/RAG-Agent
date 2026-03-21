@@ -11,6 +11,8 @@ class ServerConfig(BaseConfig):
 
     # 服务器配置
     HOST = "127.0.0.1"
+    PORT = 8000  # 默认端口，本地测试使用
+    RELOAD = True
     
     @classmethod
     def get_port(cls):
@@ -21,9 +23,6 @@ class ServerConfig(BaseConfig):
             return 8001
         else:
             return 8000
-    
-    PORT = get_port()  # 动态端口
-    RELOAD = True
 
     # 基于当前文件位置动态计算模块路径
     @classmethod

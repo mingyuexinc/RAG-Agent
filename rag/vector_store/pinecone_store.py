@@ -167,15 +167,32 @@ class PineconeStore:
         # 构建 Pinecone 过滤条件
         pinecone_filter = self._build_pinecone_filter(filter_metadata) if filter_metadata else None
 
-        # 执行检索
+        # 执行检索 - 增加重试机制
         logger.debug(f"Pinecone filter: {pinecone_filter}")
-
-        results = self.index.query(
-            vector=query_vector,
-            top_k=k * 3,  # 先检索更多候选
-            filter=pinecone_filter,
-            include_metadata=True
-        )
+        
+        max_retries = 3
+        retry_delay = 1  # 秒
+        
+        for attempt in range(max_retries):
+            try:
+                results = self.index.query(
+                    vector=query_vector,
+                    top_k=k * 3,  # 先检索更多候选
+                    filter=pinecone_filter,
+                    include_metadata=True,
+                    timeout=30  # 30秒超时
+                )
+                break  # 成功则跳出重试循环
+            except Exception as e:
+                logger.warning(f"Pinecone查询失败 (尝试 {attempt + 1}/{max_retries}): {e}")
+                if attempt < max_retries - 1:
+                    logger.info(f"等待 {retry_delay} 秒后重试...")
+                    import time
+                    time.sleep(retry_delay)
+                    retry_delay *= 2  # 指数退避
+                else:
+                    logger.error(f"Pinecone查询最终失败，返回空结果")
+                    return []  # 返回空列表而不是抛出异常
 
         # 解析结果
         matches = []
