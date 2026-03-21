@@ -22,7 +22,17 @@ class ImageService:
     
     def __init__(self):
         import os
-        current_cwd = os.getcwd()
+        from datetime import datetime
+        
+        # 安全获取当前工作目录
+        try:
+            current_cwd = os.getcwd()
+            logger.info(f"当前工作目录: {current_cwd}")
+        except OSError as e:
+            logger.warning(f"无法获取当前工作目录: {e}")
+            # 使用备选方案
+            current_cwd = "/home/studio_service/PROJECT"  # ModelScope环境默认路径
+            logger.info(f"使用默认路径: {current_cwd}")
         
         # 获取项目根目录（无论从哪里运行都指向项目根目录）
         if current_cwd.endswith('app'):
@@ -34,12 +44,51 @@ class ImageService:
         
         self.base_dir = project_root / "data" / "save_pic"
         self.base_dir = self.base_dir.resolve()  # 获取绝对路径
-        self.base_dir.mkdir(parents=True, exist_ok=True)
+        
+        logger.info(f"项目根目录: {project_root}")
+        logger.info(f"图片存储基础目录: {self.base_dir}")
+        
+        # 创建基础目录
+        try:
+            self.base_dir.mkdir(parents=True, exist_ok=True)
+            logger.info(f"基础目录创建成功: {self.base_dir}")
+        except Exception as e:
+            logger.error(f"基础目录创建失败: {e}")
+            # 尝试使用绝对路径
+            try:
+                abs_base_dir = Path("/home/studio_service/PROJECT/data/save_pic")
+                abs_base_dir.mkdir(parents=True, exist_ok=True)
+                self.base_dir = abs_base_dir
+                logger.info(f"使用绝对路径创建基础目录成功: {self.base_dir}")
+            except Exception as e2:
+                logger.error(f"绝对路径创建也失败: {e2}")
+                # 最后尝试使用临时目录
+                import tempfile
+                temp_dir = Path(tempfile.gettempdir()) / "rag_agent_images"
+                temp_dir.mkdir(exist_ok=True)
+                self.base_dir = temp_dir
+                logger.warning(f"使用临时目录: {self.base_dir}")
         
         # 创建年度目录
         current_year = datetime.now().year
         self.current_year_dir = self.base_dir / str(current_year)
-        self.current_year_dir.mkdir(exist_ok=True)
+        
+        try:
+            self.current_year_dir.mkdir(exist_ok=True)
+            logger.info(f"年度目录创建成功: {self.current_year_dir}")
+        except Exception as e:
+            logger.error(f"年度目录创建失败: {e}")
+            # 尝试使用绝对路径
+            try:
+                abs_year_dir = self.base_dir / str(current_year)
+                abs_year_dir.mkdir(exist_ok=True)
+                self.current_year_dir = abs_year_dir
+                logger.info(f"使用绝对路径创建年度目录成功: {self.current_year_dir}")
+            except Exception as e2:
+                logger.error(f"年度目录创建完全失败: {e2}")
+                # 直接使用基础目录
+                self.current_year_dir = self.base_dir
+                logger.warning(f"使用基础目录替代年度目录: {self.current_year_dir}")
         
         # 配置参数
         self.max_width = 800
@@ -48,12 +97,7 @@ class ImageService:
         self.max_storage_mb = 100
         
         logger.info(f"图片服务初始化完成")
-        logger.info(f"当前工作目录: {current_cwd}")
-        logger.info(f"项目根目录: {project_root}")
-        logger.info(f"基础存储目录: {self.base_dir}")
-        logger.info(f"基础目录绝对路径: {self.base_dir.resolve()}")
-        logger.info(f"年度目录: {self.current_year_dir}")
-        logger.info(f"年度目录绝对路径: {self.current_year_dir.resolve()}")
+        logger.info(f"最终存储目录: {self.current_year_dir}")
         logger.info(f"基础目录存在: {self.base_dir.exists()}")
         logger.info(f"年度目录存在: {self.current_year_dir.exists()}")
     
@@ -154,7 +198,14 @@ class ImageService:
         try:
             # 记录详细的路径信息
             import os
-            current_cwd = os.getcwd()
+            
+            # 安全获取当前工作目录
+            try:
+                current_cwd = os.getcwd()
+            except OSError:
+                current_cwd = "无法获取"
+                logger.warning("无法获取当前工作目录，使用项目根目录")
+            
             abs_file_path = file_path.resolve()
             parent_dir = file_path.parent.resolve()
             
@@ -166,15 +217,41 @@ class ImageService:
             logger.info(f"图片数据大小: {len(image_data)} bytes")
             
             # 确保目录存在
-            file_path.parent.mkdir(parents=True, exist_ok=True)
-            logger.info(f"目录创建完成: {parent_dir}")
+            try:
+                file_path.parent.mkdir(parents=True, exist_ok=True)
+                logger.info(f"目录创建完成: {parent_dir}")
+            except Exception as e:
+                logger.error(f"创建目录失败: {e}")
+                # 尝试使用绝对路径创建
+                abs_parent = parent_dir.resolve()
+                if not abs_parent.exists():
+                    try:
+                        abs_parent.mkdir(parents=True, exist_ok=True)
+                        logger.info(f"使用绝对路径创建目录成功: {abs_parent}")
+                    except Exception as e2:
+                        logger.error(f"绝对路径创建目录也失败: {e2}")
+                        return False
             
             # 写入文件
-            with open(file_path, 'wb') as f:
-                f.write(image_data)
-                # 在文件关闭前强制刷新到磁盘
-                f.flush()
-                os.fsync(f.fileno())
+            try:
+                with open(file_path, 'wb') as f:
+                    f.write(image_data)
+                    # 在文件关闭前强制刷新到磁盘
+                    f.flush()
+                    os.fsync(f.fileno())
+            except Exception as e:
+                logger.error(f"写入文件失败: {e}")
+                # 尝试使用绝对路径写入
+                try:
+                    abs_file = file_path.resolve()
+                    with open(abs_file, 'wb') as f:
+                        f.write(image_data)
+                        f.flush()
+                        os.fsync(f.fileno())
+                    logger.info(f"使用绝对路径写入成功: {abs_file}")
+                except Exception as e2:
+                    logger.error(f"绝对路径写入也失败: {e2}")
+                    return False
             
             # 验证文件
             if file_path.exists():
