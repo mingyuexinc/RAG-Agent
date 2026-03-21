@@ -22,73 +22,18 @@ class ImageService:
     
     def __init__(self):
         import os
+        import tempfile
         from datetime import datetime
         
-        # 安全获取当前工作目录
-        try:
-            current_cwd = os.getcwd()
-            logger.info(f"当前工作目录: {current_cwd}")
-        except OSError as e:
-            logger.warning(f"无法获取当前工作目录: {e}")
-            # 使用备选方案
-            current_cwd = "/home/studio_service/PROJECT"  # ModelScope环境默认路径
-            logger.info(f"使用默认路径: {current_cwd}")
-        
-        # 获取项目根目录（无论从哪里运行都指向项目根目录）
-        if current_cwd.endswith('app'):
-            # 如果在app目录运行，返回上一级
-            project_root = Path(current_cwd).parent
-        else:
-            # 否则使用当前目录
-            project_root = Path(current_cwd)
-        
-        self.base_dir = project_root / "data" / "save_pic"
-        self.base_dir = self.base_dir.resolve()  # 获取绝对路径
-        
-        logger.info(f"项目根目录: {project_root}")
-        logger.info(f"图片存储基础目录: {self.base_dir}")
-        
-        # 创建基础目录
-        try:
-            self.base_dir.mkdir(parents=True, exist_ok=True)
-            logger.info(f"基础目录创建成功: {self.base_dir}")
-        except Exception as e:
-            logger.error(f"基础目录创建失败: {e}")
-            # 尝试使用绝对路径
-            try:
-                abs_base_dir = Path("/home/studio_service/PROJECT/data/save_pic")
-                abs_base_dir.mkdir(parents=True, exist_ok=True)
-                self.base_dir = abs_base_dir
-                logger.info(f"使用绝对路径创建基础目录成功: {self.base_dir}")
-            except Exception as e2:
-                logger.error(f"绝对路径创建也失败: {e2}")
-                # 最后尝试使用临时目录
-                import tempfile
-                temp_dir = Path(tempfile.gettempdir()) / "rag_agent_images"
-                temp_dir.mkdir(exist_ok=True)
-                self.base_dir = temp_dir
-                logger.warning(f"使用临时目录: {self.base_dir}")
+        # 直接使用临时目录，避免权限问题
+        temp_dir = Path(tempfile.gettempdir())
+        self.base_dir = temp_dir / "rag_agent_images"
+        self.base_dir.mkdir(exist_ok=True)
         
         # 创建年度目录
         current_year = datetime.now().year
         self.current_year_dir = self.base_dir / str(current_year)
-        
-        try:
-            self.current_year_dir.mkdir(exist_ok=True)
-            logger.info(f"年度目录创建成功: {self.current_year_dir}")
-        except Exception as e:
-            logger.error(f"年度目录创建失败: {e}")
-            # 尝试使用绝对路径
-            try:
-                abs_year_dir = self.base_dir / str(current_year)
-                abs_year_dir.mkdir(exist_ok=True)
-                self.current_year_dir = abs_year_dir
-                logger.info(f"使用绝对路径创建年度目录成功: {self.current_year_dir}")
-            except Exception as e2:
-                logger.error(f"年度目录创建完全失败: {e2}")
-                # 直接使用基础目录
-                self.current_year_dir = self.base_dir
-                logger.warning(f"使用基础目录替代年度目录: {self.current_year_dir}")
+        self.current_year_dir.mkdir(exist_ok=True)
         
         # 配置参数
         self.max_width = 800
@@ -97,9 +42,8 @@ class ImageService:
         self.max_storage_mb = 100
         
         logger.info(f"图片服务初始化完成")
-        logger.info(f"最终存储目录: {self.current_year_dir}")
-        logger.info(f"基础目录存在: {self.base_dir.exists()}")
-        logger.info(f"年度目录存在: {self.current_year_dir.exists()}")
+        logger.info(f"使用临时目录: {self.base_dir}")
+        logger.info(f"年度目录: {self.current_year_dir}")
     
     def get_url_hash(self, url: str) -> str:
         """获取URL的MD5哈希"""
