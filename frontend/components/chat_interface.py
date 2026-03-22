@@ -121,13 +121,12 @@ class ChatInterface:
                         stats = self.image_display.get_image_stats(payload)
                         assistant_text = answer + ("\n\n" + stats if stats else "")
                         
-                        # 使用新的API路径构建完整URL
-                        # 使用api_client的base_url，支持动态环境
+                        # 使用完整的URL，确保请求打到正确的服务
                         image_url = f"{api_client.base_url}{api_path}"
                         
-                        logger.info(f"🔍 流程图处理 - 生成的完整图片URL: {image_url}")
+                        logger.info(f"🔍 流程图处理 - 生成的完整URL: {image_url}")
                         
-                        # 使用简单的Markdown格式（回到基础方案）
+                        # 使用简单的Markdown格式
                         assistant_content = f"{assistant_text}\n\n![流程图]({image_url})"
                         
                         logger.info(f"🔍 流程图处理 - 使用Markdown格式，内容长度: {len(assistant_content)}")

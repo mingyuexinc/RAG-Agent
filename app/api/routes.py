@@ -40,17 +40,16 @@ app.mount("/file", StaticFiles(directory=str(data_dir)), name="file")
 async def get_image(path: str):
     """通过API返回图片文件"""
     logger.info(f"🔍 API_IMAGE - 收到图片请求: path={path}")
-    logger.info(f"🔍 API_IMAGE - 请求来源: 检查图片API调用情况")
     
     try:
         # 安全检查：确保路径在允许的目录内
         from pathlib import Path
+        import mimetypes
         
         # 构建完整的文件路径
         full_path = Path(__file__).parent.parent.parent / path
         
         logger.info(f"🔍 API_IMAGE - 构建的完整路径: {full_path}")
-        logger.info(f"🔍 API_IMAGE - 项目根目录: {Path(__file__).parent.parent.parent}")
         
         # 检查文件是否存在
         if not full_path.exists():
@@ -68,12 +67,19 @@ async def get_image(path: str):
             logger.error(f"🔍 API_IMAGE - 不支持的文件类型: {full_path.suffix}")
             raise HTTPException(status_code=400, detail="Unsupported file type")
         
+        # 自动识别媒体类型
+        media_type, _ = mimetypes.guess_type(str(full_path))
+        if not media_type:
+            media_type = "image/webp"  # 默认值
+        
         logger.info(f"🔍 API_IMAGE - 准备返回图片文件: {full_path}")
+        logger.info(f"🔍 API_IMAGE - 媒体类型: {media_type}")
         logger.info(f"🔍 API_IMAGE - 文件大小: {full_path.stat().st_size} bytes")
         
+        # 正确设置FileResponse，确保浏览器能正确渲染
         response = FileResponse(
             path=str(full_path),
-            media_type=f"image/{full_path.suffix.lower().lstrip('.')}",
+            media_type=media_type,
             filename=full_path.name
         )
         
