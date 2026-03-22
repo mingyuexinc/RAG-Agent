@@ -36,6 +36,46 @@ data_dir.mkdir(exist_ok=True)  # 确保目录存在
 app.mount("/file", StaticFiles(directory=str(data_dir)), name="file")
 
 
+@app.get("/api/image")
+async def get_image(path: str):
+    """通过API返回图片文件"""
+    try:
+        # 安全检查：确保路径在允许的目录内
+        from pathlib import Path
+        
+        # 构建完整的文件路径
+        full_path = Path(__file__).parent.parent.parent / path
+        
+        # 检查文件是否存在
+        if not full_path.exists():
+            logger.error(f"图片文件不存在: {full_path}")
+            raise HTTPException(status_code=404, detail="Image not found")
+        
+        # 检查是否为文件
+        if not full_path.is_file():
+            logger.error(f"路径不是文件: {full_path}")
+            raise HTTPException(status_code=404, detail="Image not found")
+        
+        # 检查文件扩展名，确保是图片文件
+        allowed_extensions = {'.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.svg'}
+        if full_path.suffix.lower() not in allowed_extensions:
+            logger.error(f"不支持的文件类型: {full_path.suffix}")
+            raise HTTPException(status_code=400, detail="Unsupported file type")
+        
+        logger.info(f"返回图片文件: {full_path}")
+        return FileResponse(
+            path=str(full_path),
+            media_type=f"image/{full_path.suffix.lower().lstrip('.')}",
+            filename=full_path.name
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"返回图片文件失败: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
 @app.get("/health")
 async def health():
     """健康检查，供前端判断是否已连接后端"""

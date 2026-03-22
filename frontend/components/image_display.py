@@ -23,27 +23,11 @@ class ImageDisplay:
             return []
         
         try:
-            # 优先使用api_path，如果没有则使用local_path
+            # 直接使用api_path，不再构造路径
             image_url = payload.get("api_path")
             if not image_url:
-                local_path = payload.get("local_path")
-                if not local_path:
-                    return []
-                
-                # 兼容旧格式，生成URL
-                if isinstance(local_path, str):
-                    if local_path.startswith("data/"):
-                        # 转换为正确的访问URL格式
-                        filename = local_path.split("/")[-1]
-                        image_url = f"/file/save_pic/2026/{filename}"
-                    elif local_path.startswith("D:\\") or local_path.startswith("/"):
-                        # 如果是绝对路径，转换为URL格式
-                        path_obj = Path(local_path)
-                        image_url = f"/file/save_pic/2026/{path_obj.name}"
-                    else:
-                        image_url = f"/file/save_pic/2026/{Path(local_path).name}"
-                else:
-                    image_url = f"/file/save_pic/2026/{Path(str(local_path)).name}"
+                logger.error("payload中缺少api_path字段")
+                return [{"type": "text", "text": "❌ 图片显示失败: 缺少API路径"}]
             
             logger.info(f"图片URL: {image_url}")
             logger.info(f"图片payload: {payload}")
