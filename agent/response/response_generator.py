@@ -94,9 +94,9 @@ class ResponseGenerator:
             image_result = await image_service.process_flowchart_image(chart_url)
             
             if image_result["success"]:
-                # 获取相对路径用于前端显示
-                local_path = image_result["local_path"]
-                relative_path = image_service.get_relative_path(local_path)
+                # 使用新的API路径而不是相对路径
+                api_path = image_result.get("api_path")
+                local_path = image_result.get("local_path")
                 
                 # 更新缓存管理器
                 cache_manager.add_entry(chart_url, local_path, image_result.get("file_size", 0))
@@ -108,7 +108,8 @@ class ResponseGenerator:
                     "payload": {
                         "chart_url": chart_url,
                         "chart_code": chart_data.get("chart_code"),
-                        "local_path": relative_path,
+                        "api_path": api_path,  # 使用新的API路径
+                        "local_path": local_path,  # 保留本地路径作为备份
                         "cached": image_result.get("cached", False),
                         "file_size": image_result.get("file_size", 0)
                     }
@@ -131,6 +132,7 @@ class ResponseGenerator:
                     "payload": {
                         "chart_url": chart_url,
                         "chart_code": chart_data.get("chart_code"),
+                        "api_path": None,  # 添加api_path字段
                         "local_path": None,
                         "error": image_result.get("error")
                     }
@@ -148,6 +150,7 @@ class ResponseGenerator:
                 "payload": {
                     "chart_url": chart_url,
                     "chart_code": chart_data.get("chart_code"),
+                    "api_path": None,  # 添加api_path字段
                     "local_path": None,
                     "error": str(e)
                 }
