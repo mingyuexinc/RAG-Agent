@@ -70,7 +70,6 @@ class ChatInterface:
                 session_id=state_manager.session_id
             )
 
-            # ❗关键：先判断是不是异常响应
             if not isinstance(response, dict):
                 raise ValueError("响应不是dict")
 
@@ -78,37 +77,39 @@ class ChatInterface:
                 assistant_content = f"❌ 请求失败: {response['error']}"
 
             else:
-                # ✅ 容错解析（核心）
                 task_type = response.get("task_type", "unknown")
                 answer = response.get("answer", "")
                 payload = response.get("payload") or {}
 
-                # -------- 流程图处理 --------
+                # ===== 流程图处理 =====
                 if task_type == "flowchart_generation":
 
+                    image_base64 = payload.get("image_base64")
                     chart_url = payload.get("chart_url")
-                    api_path = payload.get("api_path")
 
-                    if api_path:
-                        image_url = f"{api_client.base_url}{api_path}"
+                    # ✅ 优先：base64（100%可用）
+                    if image_base64:
+                        image_url = f"data:image/webp;base64,{image_base64}"
 
                         assistant_content = (
                             f"{answer}\n\n"
                             f"![流程图]({image_url})"
                         )
+
+                    # 🟡 fallback：远程图
                     elif chart_url:
-                        # fallback：直接用远程图
                         assistant_content = (
                             f"{answer}\n\n"
                             f"![流程图]({chart_url})"
                         )
+
                     else:
                         assistant_content = answer + "\n\n❌ 流程图生成失败"
 
                 else:
                     assistant_content = answer
 
-            # ✅ 更新 session_id
+            # session_id
             if isinstance(response, dict) and "session_id" in response:
                 state_manager.set_session_id(response["session_id"])
 

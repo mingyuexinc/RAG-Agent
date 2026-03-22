@@ -1,5 +1,7 @@
-from typing import Dict, Any
+import base64
+import os
 
+from typing import Dict, Any
 from fastapi import HTTPException
 from agent.orchestrator.agent import DocAgent
 from agent.orchestrator.executor import ExecutionResult
@@ -65,50 +67,63 @@ class ResponseGenerator:
             "usage_metadata": metadata
         }
 
+
+
     async def _flowchart(self, result: ExecutionResult) -> Dict[str, Any]:
-        """处理流程图生成响应"""
+        """处理流程图生成响应（base64兼容版）"""
         chart_result = result.tool_results["chart_gen"]
         chart_data = chart_result["data"]
         chart_url = chart_data.get("chart_url")
+
         if not chart_url:
             return {
                 "task_type": result.task_type,
                 "answer": "流程图生成失败：未获取到图表URL。",
                 "payload": None
             }
+
         try:
-            # 每次都创建新的图片服务实例
             image_service = get_image_service()
             image_result = await image_service.process_flowchart_image(chart_url)
+
             if image_result["success"]:
-                # 使用新的API路径而不是相对路径
-                api_path = image_result.get("api_path")
                 local_path = image_result.get("local_path")
-                # 更新缓存管理器
-                cache_manager.add_entry(chart_url, local_path, image_result.get("file_size", 0))
-                # 构建响应
+
+                # ✅ 核心：读取图片 → base64
+                image_base64 = None
+                if local_path and os.path.exists(local_path):
+                    with open(local_path, "rb") as f:
+                        image_base64 = base64.b64encode(f.read()).decode()
+
+                # 更新缓存
+                cache_manager.add_entry(
+                    chart_url,
+                    local_path,
+                    image_result.get("file_size", 0)
+                )
+
                 response_data = {
                     "task_type": result.task_type,
                     "answer": "已根据制度文档生成流程图。",
                     "payload": {
                         "chart_url": chart_url,
                         "chart_code": chart_data.get("chart_code"),
-                        "api_path": api_path,  # 使用新的API路径
-                        "local_path": local_path,  # 保留本地路径作为备份
+                        "image_base64": image_base64,  # ✅ 关键字段
                         "cached": image_result.get("cached", False),
                         "file_size": image_result.get("file_size", 0)
                     }
                 }
 
-                # 添加压缩信息
+                # 压缩信息（可选）
                 if not image_result.get("cached", False):
-                    compression_info = {
+                    response_data["payload"]["compression_info"] = {
                         "original_size": image_result.get("original_size", 0),
                         "optimized_size": image_result.get("optimized_size", 0),
                         "compression_ratio": image_result.get("compression_ratio", 0)
                     }
-                    response_data["payload"]["compression_info"] = compression_info
+
                 return response_data
+
             else:
                 return {
                     "task_type": result.task_type,
@@ -116,24 +131,23 @@ class ResponseGenerator:
                     "payload": {
                         "chart_url": chart_url,
                         "chart_code": chart_data.get("chart_code"),
-                        "api_path": None,  # 添加api_path字段
-                        "local_path": None,
+                        "image_base64": None,
                         "error": image_result.get("error")
                     }
                 }
+
         except Exception as e:
-            # 记录错误并返回失败响应
             from infra.logs.logger_config import get_logger
             logger = get_logger("agent.response")
-            logger.error(f"流程图图片处理失败: {e}")
+            logger.error(f"流程图图片处理失败: {e}", exc_info=True)
+
             return {
                 "task_type": result.task_type,
                 "answer": "流程图生成过程中出现错误，请稍后重试。",
                 "payload": {
                     "chart_url": chart_url,
                     "chart_code": chart_data.get("chart_code"),
-                    "api_path": None,  # 添加api_path字段
-                    "local_path": None,
+                    "image_base64": None,
                     "error": str(e)
                 }
             }
