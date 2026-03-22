@@ -39,6 +39,8 @@ app.mount("/file", StaticFiles(directory=str(data_dir)), name="file")
 @app.get("/api/image")
 async def get_image(path: str):
     """通过API返回图片文件"""
+    logger.info(f"🔍 API_IMAGE - 收到图片请求: path={path}")
+    
     try:
         # 安全检查：确保路径在允许的目录内
         from pathlib import Path
@@ -46,33 +48,42 @@ async def get_image(path: str):
         # 构建完整的文件路径
         full_path = Path(__file__).parent.parent.parent / path
         
+        logger.info(f"🔍 API_IMAGE - 构建的完整路径: {full_path}")
+        logger.info(f"🔍 API_IMAGE - 项目根目录: {Path(__file__).parent.parent.parent}")
+        
         # 检查文件是否存在
         if not full_path.exists():
-            logger.error(f"图片文件不存在: {full_path}")
+            logger.error(f"🔍 API_IMAGE - 图片文件不存在: {full_path}")
             raise HTTPException(status_code=404, detail="Image not found")
         
         # 检查是否为文件
         if not full_path.is_file():
-            logger.error(f"路径不是文件: {full_path}")
+            logger.error(f"🔍 API_IMAGE - 路径不是文件: {full_path}")
             raise HTTPException(status_code=404, detail="Image not found")
         
         # 检查文件扩展名，确保是图片文件
         allowed_extensions = {'.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.svg'}
         if full_path.suffix.lower() not in allowed_extensions:
-            logger.error(f"不支持的文件类型: {full_path.suffix}")
+            logger.error(f"🔍 API_IMAGE - 不支持的文件类型: {full_path.suffix}")
             raise HTTPException(status_code=400, detail="Unsupported file type")
         
-        logger.info(f"返回图片文件: {full_path}")
-        return FileResponse(
+        logger.info(f"🔍 API_IMAGE - 准备返回图片文件: {full_path}")
+        
+        response = FileResponse(
             path=str(full_path),
             media_type=f"image/{full_path.suffix.lower().lstrip('.')}",
             filename=full_path.name
         )
         
+        logger.info(f"🔍 API_IMAGE - 成功创建FileResponse: {response}")
+        return response
+        
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"返回图片文件失败: {e}")
+        logger.error(f"🔍 API_IMAGE - 返回图片文件失败: {e}")
+        import traceback
+        logger.error(f"🔍 API_IMAGE - 详细错误: {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
 

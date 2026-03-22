@@ -112,6 +112,10 @@ class ChatInterface:
                     chart_code = payload.get("chart_code")
                     api_path = payload.get("api_path")
                     
+                    logger.info(f"🔍 流程图处理 - chart_url: {chart_url}")
+                    logger.info(f"🔍 流程图处理 - api_path: {api_path}")
+                    logger.info(f"🔍 流程图处理 - api_client.base_url: {api_client.base_url}")
+                    
                     if api_path and chart_url:
                         # 构建文本回复
                         answer = response.get("answer", "已根据制度文档生成流程图。")
@@ -122,10 +126,26 @@ class ChatInterface:
                         # 使用api_client的base_url，支持动态环境
                         image_url = f"{api_client.base_url}{api_path}"
                         
-                        # 创建兼容的消息内容（使用Markdown格式）
-                        assistant_content = f"{assistant_text}\n\n![流程图]({image_url})"
+                        logger.info(f"🔍 流程图处理 - 生成的完整图片URL: {image_url}")
+                        
+                        # 创建结构化内容：文本 + 图片
+                        structured_content = [
+                            {"type": "text", "text": assistant_text},
+                            {"type": "image", "url": image_url}
+                        ]
+                        
+                        logger.info(f"🔍 流程图处理 - 创建的结构化内容: {structured_content}")
+                        
+                        # 使用结构化内容添加到聊天历史
+                        state_manager.add_message("assistant", structured_content, is_structured=True)
+                        
+                        # 设置assistant_content为None，因为我们已经通过add_message处理了
+                        assistant_content = None
+                        
+                        logger.info(f"🔍 流程图处理 - 已添加结构化消息到聊天历史")
                         
                     else:
+                        logger.error(f"❌ 流程图处理 - 缺少必要字段: api_path={api_path}, chart_url={chart_url}")
                         assistant_content = response.get("answer", "已根据制度文档生成流程图。") + "\n\n❌ 流程图生成失败"
                 else:
                     assistant_content = response.get("answer", "抱歉，我无法回答这个问题。")
@@ -145,7 +165,8 @@ class ChatInterface:
                     # 如果是结构化消息，不添加任务类型
             
             # 添加助手回复（普通文本格式）
-            state_manager.add_message("assistant", assistant_content)
+            if assistant_content is not None:
+                state_manager.add_message("assistant", assistant_content)
         
         except Exception as e:
             logger.error(f"处理消息时出错: {e}")
