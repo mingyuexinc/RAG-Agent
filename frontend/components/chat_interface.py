@@ -110,44 +110,23 @@ class ChatInterface:
                     payload = response["payload"]
                     chart_url = payload.get("chart_url")
                     chart_code = payload.get("chart_code")
-                    local_path = payload.get("local_path")
+                    api_path = payload.get("api_path")
                     
-                    if local_path and chart_url:
+                    if api_path and chart_url:
                         # 构建文本回复
                         answer = response.get("answer", "已根据制度文档生成流程图。")
                         stats = self.image_display.get_image_stats(payload)
                         assistant_text = answer + ("\n\n" + stats if stats else "")
                         
-                        # 准备图片路径 - 纯字符串操作
-                        if isinstance(local_path, str):
-                            if local_path.startswith("data/"):
-                                image_path_for_display = local_path.replace("data/", "")
-                            elif local_path.startswith("D:\\"):
-                                # 提取文件名
-                                filename = local_path.split("\\")[-1]
-                                image_path_for_display = f"save_pic/2026/{filename}"
-                            elif local_path.startswith("/"):
-                                # 提取文件名
-                                filename = local_path.split("/")[-1]
-                                image_path_for_display = f"save_pic/2026/{filename}"
-                            else:
-                                # 直接使用文件名
-                                filename = local_path.split("/")[-1] if "/" in local_path else local_path.split("\\")[-1]
-                                image_path_for_display = f"save_pic/2026/{filename}"
-                        else:
-                            image_path_for_display = str(local_path)
-                        
-                        # 构建完整URL
-                        image_url = f"http://localhost:8000/file/{image_path_for_display}"
-                        
-                        # 强制使用正斜杠
-                        image_url = image_url.replace("\\", "/")
+                        # 使用新的API路径构建完整URL
+                        # 使用api_client的base_url，支持动态环境
+                        image_url = f"{api_client.base_url}{api_path}"
                         
                         # 创建兼容的消息内容（使用Markdown格式）
                         assistant_content = f"{assistant_text}\n\n![流程图]({image_url})"
                         
                     else:
-                        assistant_content = answer + "\n\n❌ 流程图生成失败"
+                        assistant_content = response.get("answer", "已根据制度文档生成流程图。") + "\n\n❌ 流程图生成失败"
                 else:
                     assistant_content = response.get("answer", "抱歉，我无法回答这个问题。")
                 
