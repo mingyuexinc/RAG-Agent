@@ -49,10 +49,14 @@ class StateManager:
         """获取Gradio格式的聊天历史"""
         history = []
         for msg in self.chat_history:
-            history.append({
-                "role": msg.role, 
-                "content": msg.content
-            })
+            # 标准Chatbot使用 (user, assistant) 格式
+            if msg.role == "user":
+                history.append([msg.content, None])
+            elif msg.role == "assistant":
+                if history and history[-1][1] is None:
+                    history[-1][1] = msg.content
+                else:
+                    history.append([None, msg.content])
         return history
     
     def set_session_id(self, session_id: str):

@@ -28,7 +28,6 @@ class ChatInterface:
         self.chatbot = gr.Chatbot(
             [],
             elem_id="chatbot",
-            type="messages",
             sanitize_html=False,  # 允许HTML渲染
         )
         
@@ -128,21 +127,11 @@ class ChatInterface:
                         
                         logger.info(f"🔍 流程图处理 - 生成的完整图片URL: {image_url}")
                         
-                        # 创建结构化内容：文本 + 图片
-                        structured_content = [
-                            {"type": "text", "text": assistant_text},
-                            {"type": "image", "url": image_url}
-                        ]
+                        # 使用简单的Markdown格式（回到基础方案）
+                        assistant_content = f"{assistant_text}\n\n![流程图]({image_url})"
                         
-                        logger.info(f"🔍 流程图处理 - 创建的结构化内容: {structured_content}")
-                        
-                        # 使用结构化内容添加到聊天历史
-                        state_manager.add_message("assistant", structured_content, is_structured=True)
-                        
-                        # 设置assistant_content为None，因为我们已经通过add_message处理了
-                        assistant_content = None
-                        
-                        logger.info(f"🔍 流程图处理 - 已添加结构化消息到聊天历史")
+                        logger.info(f"🔍 流程图处理 - 使用Markdown格式，内容长度: {len(assistant_content)}")
+                        logger.info(f"🔍 流程图处理 - Markdown内容预览: {assistant_content[:200]}...")
                         
                     else:
                         logger.error(f"❌ 流程图处理 - 缺少必要字段: api_path={api_path}, chart_url={chart_url}")

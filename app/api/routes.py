@@ -40,6 +40,7 @@ app.mount("/file", StaticFiles(directory=str(data_dir)), name="file")
 async def get_image(path: str):
     """通过API返回图片文件"""
     logger.info(f"🔍 API_IMAGE - 收到图片请求: path={path}")
+    logger.info(f"🔍 API_IMAGE - 请求来源: 检查图片API调用情况")
     
     try:
         # 安全检查：确保路径在允许的目录内
@@ -68,6 +69,7 @@ async def get_image(path: str):
             raise HTTPException(status_code=400, detail="Unsupported file type")
         
         logger.info(f"🔍 API_IMAGE - 准备返回图片文件: {full_path}")
+        logger.info(f"🔍 API_IMAGE - 文件大小: {full_path.stat().st_size} bytes")
         
         response = FileResponse(
             path=str(full_path),
@@ -75,7 +77,7 @@ async def get_image(path: str):
             filename=full_path.name
         )
         
-        logger.info(f"🔍 API_IMAGE - 成功创建FileResponse: {response}")
+        logger.info(f"🔍 API_IMAGE - 成功创建FileResponse，返回图片")
         return response
         
     except HTTPException:
