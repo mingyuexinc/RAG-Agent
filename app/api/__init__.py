@@ -1,3 +1,0 @@
-"""
-RAG Agent API包
-"""

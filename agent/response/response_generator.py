@@ -9,7 +9,7 @@ from agent.prompts.prompt_manager import PromptManager
 from agent.state.state_manager import AgentState
 from app.api.schemas_response import QueryRequest, QueryResponse
 from infra.config.app_config import AppConfig
-from services.cache_manager import cache_manager
+from infra.persistence.cache_manager import cache_manager
 from services.image_service import get_image_service
 
 class ResponseGenerator:

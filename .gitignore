@@ -9,8 +9,7 @@ infra/logs/log_data
 *.log
 
 # Data and Assets
-data/upload/
-data/vector_db/
+data/
 
 
 # Environment variables
