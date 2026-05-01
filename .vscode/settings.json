@@ -1,0 +1,7 @@
+{
+    "workbench.colorTheme": "Default Light Modern",
+    "files.exclude": {
+        ".cursor": true,
+        ".vscode": true
+    }
+}

@@ -5,6 +5,7 @@ from agent.state.state_manager import AgentState
 from infra.config.app_config import AppConfig
 from agent.prompts.prompt_manager import PromptManager
 from agent.orchestrator.executor import ExecutionPlan
+from infra.container import AppContainer
 from llm.model import ModelManager
 
 
@@ -42,5 +43,5 @@ class TaskPlanner:
             tool_params=raw.get("tool_params", {}),
         )
         # validate
-        plan.validate(available_tools=["knowledge_search", "summarizer", "chart_gen"])
+        plan.validate(available_tools=AppContainer.get_available_tool_names())
         return plan

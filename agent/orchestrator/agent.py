@@ -3,6 +3,8 @@ import time
 from copy import deepcopy
 from typing import Dict, Any, Optional
 
+from langchain_core.tools import BaseTool as LCBaseTool
+
 from agent.orchestrator.executor import ExecutionPlan, ExecutionResult, ExecutionContext
 from agent.state.session_manager import SessionManager
 from agent.state.state_manager import AgentStateManager
@@ -10,7 +12,6 @@ from infra.config.app_config import AppConfig
 from infra.logs.logger_config import get_logger
 
 from llm.model import ModelManager
-from tools.base import BaseTool
 
 # 添加agent模块日志
 logger = get_logger("agent.orchestrator")
@@ -18,7 +19,7 @@ print("[VERSION] Agent orchestrator updated at 2026-03-21 22:10")
 
 
 class DocAgent:
-    def __init__(self,tools:Dict[str,BaseTool]):
+    def __init__(self, tools: Dict[str, LCBaseTool]):
         self.tools = tools
         self.max_steps = AppConfig.agent.MAX_STEPS
         self.max_retries = AppConfig.agent.MAX_RETRIES
@@ -125,28 +126,17 @@ class DocAgent:
                         
                         resolved_params = self._resolve_params(raw_params, state.working_context)
                         logger.info(f"解析后参数: {resolved_params}")
-                        
-                        # 检查解析后的参数是否有效
-                        if tool_name == "summarizer":
-                            documents = resolved_params.get("documents")
-                            logger.info(f"[DEBUG] summarizer参数检查: documents={documents}, type={type(documents)}")
-                            if not documents or len(documents) == 0:
-                                error_msg = f"summarizer工具缺少documents参数或参数为空: {resolved_params}"
-                                logger.info(f"[ERROR] {error_msg}")
-                                print(f"[ERROR] {error_msg}")  # 强制输出到控制台
-                                raise ValueError("summarizer tool requires non-empty documents parameter")
-                        
-                        if tool_name == "knowledge_search":
-                            set_tool = True
-                        else:
-                            set_tool = False
-                        
+
+                        self._sync_tool_inputs_to_context(tool, resolved_params, state.working_context)
+
                         logger.info(f"执行工具 {tool_name}...")
-                        result = tool.run(resolved_params, state.working_context, set_tool)
+                        result = tool.invoke(resolved_params)
                         
                         if not isinstance(result, dict):
                             logger.error(f"工具返回结果格式错误: {type(result)}")
                             result = {"success": False, "error": "Invalid result format"}
+
+                        self._sync_tool_output_to_context(tool, result, state.working_context)
                         
                         success = result.get("success", False)
                         logger.info(f"工具 {tool_name} 执行结果: {success}")
@@ -218,6 +208,33 @@ class DocAgent:
         model_manager = ModelManager(timeout=30)
         response = model_manager.invoke_with_timeout(prompt)
         return response.content.strip()
+
+    def _sync_tool_inputs_to_context(
+        self,
+        tool: LCBaseTool,
+        resolved_params: Dict[str, Any],
+        context: ExecutionContext,
+    ) -> None:
+        metadata = tool.metadata or {}
+        if not metadata.get("set_inputs_to_context", False):
+            return
+
+        for key in metadata.get("input_keys", []):
+            if key in resolved_params:
+                context.set(key, resolved_params[key])
+
+    def _sync_tool_output_to_context(
+        self,
+        tool: LCBaseTool,
+        result: Dict[str, Any],
+        context: ExecutionContext,
+    ) -> None:
+        metadata = tool.metadata or {}
+        output_key = metadata.get("output_key")
+        if not output_key:
+            return
+        if result.get("success", False):
+            context.set(output_key, result.get("data"))
 
 
 

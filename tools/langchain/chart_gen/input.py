@@ -1,0 +1,13 @@
+"""
+流程图生成工具输入模型
+"""
+from pydantic import BaseModel, Field
+
+
+class ChartGenInput(BaseModel):
+    """流程图生成工具输入参数"""
+    summarized_text: str = Field(
+        ..., 
+        min_length=1, 
+        description="摘要文本"
+    )

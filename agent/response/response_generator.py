@@ -7,7 +7,7 @@ from agent.orchestrator.agent import DocAgent
 from agent.orchestrator.executor import ExecutionResult
 from agent.prompts.prompt_manager import PromptManager
 from agent.state.state_manager import AgentState
-from app.api.schemas_response import QueryRequest, QueryResponse
+from api.schemas_response import QueryRequest, QueryResponse
 from infra.config.app_config import AppConfig
 from infra.persistence.cache_manager import cache_manager
 from services.image_service import get_image_service

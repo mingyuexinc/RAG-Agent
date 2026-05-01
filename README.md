@@ -35,8 +35,15 @@
 ### Architecture
 - **Backend**: FastAPI with agent orchestration, session management, and RAG pipeline
 - **Frontend**: Gradio web interface with modular components
-- **Storage**: Vector database for document embeddings
+- **Tools**: LangChain-based tool integration for knowledge search, summarization, and chart generation
+- **Storage**: Vector database for document embeddings (FAISS/Pinecone)
 - **Logging**: Unified logging system for monitoring and debugging
+
+### Tool Integration
+The system uses LangChain's official tool framework with three main tools:
+- **Knowledge Search**: Retrieves relevant documents from vector knowledge base
+- **Summarizer**: Generates summaries from retrieved documents using LLM
+- **Chart Generation**: Creates flowcharts from summarized text using Mermaid
 
 ## run
 ### Prerequisites

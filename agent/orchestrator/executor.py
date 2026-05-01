@@ -3,8 +3,8 @@ from pydantic import BaseModel
 from typing import Dict, Any, List, Optional
 
 from infra.config.app_config import AppConfig
-from infra.config.executor_config import TaskType, TASK_TOOL_CONSTRAINTS
-
+from infra.config.executor_config import TaskType
+from tools.langchain.registry import ToolRegistry
 
 class ExecutionResult(BaseModel):
     success: bool
@@ -61,21 +61,27 @@ class ExecutionPlan:
     tools: List[str]
     tool_params: Dict[str, Dict[str, Any]]
 
-    TASK_TOOL_CONSTRAINTS = AppConfig.executor.TASK_TOOL_CONSTRAINTS
-
     def validate(self, available_tools: List[str]):
-        if self.task_type not in TASK_TOOL_CONSTRAINTS:
+        """
+        验证执行计划
+        
+        使用ToolRegistry动态获取任务类型允许的工具
+        """
+        # 从注册中心获取该任务类型允许的工具
+        allowed_tools = ToolRegistry.get_tools_for_task(self.task_type)
+        
+        # 如果没有配置该任务类型，则报错
+        if not allowed_tools and self.task_type not in ToolRegistry.list_all_task_types():
             raise ValueError(f"Unknown task_type: {self.task_type}")
-
-        allowed_tools = TASK_TOOL_CONSTRAINTS[self.task_type]
 
         for tool in self.tools:
             if tool not in available_tools:
                 raise ValueError(f"Unknown tool: {tool}")
 
-            if tool not in allowed_tools:
+            if allowed_tools and tool not in allowed_tools:
                 raise ValueError(
-                    f"Tool {tool} not allowed for task_type {self.task_type}"
+                    f"Tool {tool} not allowed for task_type {self.task_type}. "
+                    f"Allowed tools: {allowed_tools}"
                 )
 
         for tool in self.tools:

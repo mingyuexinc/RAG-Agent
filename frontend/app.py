@@ -28,6 +28,7 @@ import gradio as gr
 import logging
 import time
 import threading
+import os
 from frontend.components import ChatInterface, DocumentUpload
 from frontend.services import api_client, state_manager
 
@@ -282,6 +283,7 @@ class RAGAgentFrontend:
     def launch(self, **kwargs):
         """启动应用"""
         app = self.create_interface()
+        self._ensure_localhost_no_proxy()
         
         # 默认启动参数：使用 127.0.0.1 避免浏览器访问 0.0.0.0 时出现 502
         default_kwargs = {
@@ -298,6 +300,18 @@ class RAGAgentFrontend:
         logger.info("启动 RAG Agent 前端界面...")
         app.launch(**default_kwargs)
 
+
+    @staticmethod
+    def _ensure_localhost_no_proxy():
+        """Ensure localhost requests never go through system proxy."""
+        bypass_hosts = ["127.0.0.1", "localhost", "::1"]
+        for key in ("NO_PROXY", "no_proxy"):
+            current = os.environ.get(key, "")
+            parts = [p.strip() for p in current.split(",") if p.strip()]
+            for host in bypass_hosts:
+                if host not in parts:
+                    parts.append(host)
+            os.environ[key] = ",".join(parts)
 
 def main():
     """主函数"""
