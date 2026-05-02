@@ -72,10 +72,5 @@ The system uses LangChain's official tool framework with three main tools:
 4. **Generate Flowcharts**: Request flowchart generation from uploaded documents
 
 
-
-## result
-![flow_chart_result](docs/flow_chart_result.png)
-
-
 ## Visit
     https://www.modelscope.cn/studios/hacker0320/Agent_Knowledge_Base_Assistant
