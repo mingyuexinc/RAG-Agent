@@ -67,6 +67,12 @@ def _candidate_backend_ports():
     return [8000, 8001, 15181]
 
 
+def _is_modelscope_env():
+    cwd = os.getcwd()
+    pwd = os.getenv("PWD", "")
+    return "/home/studio_service" in cwd or "/home/studio_service" in pwd
+
+
 def _set_frontend_backend_url(backend_url: str):
     from frontend.services import api_client
 
@@ -86,17 +92,25 @@ def _find_existing_backend():
     return None
 
 
-def _wait_for_backend(timeout_seconds: int = 15):
+def _wait_for_backend(backend_process, timeout_seconds: int = None):
+    if timeout_seconds is None:
+        timeout_seconds = 75 if _is_modelscope_env() else 20
+
     deadline = time.time() + timeout_seconds
     last_error = None
 
     while time.time() < deadline:
+        if backend_process.poll() is not None:
+            print(f"Backend process exited early with code {backend_process.returncode}")
+            return None
+
         for port in _candidate_backend_ports():
             url = f"http://127.0.0.1:{port}"
             try:
                 response = requests.get(f"{url}/health", timeout=2)
                 if response.status_code == 200:
                     return url
+                last_error = f"{url}/health returned HTTP {response.status_code}"
             except requests.exceptions.RequestException as exc:
                 last_error = exc
         time.sleep(1)
@@ -124,7 +138,7 @@ def start_backend_server():
             env=backend_env,
         )
 
-        backend_url = _wait_for_backend()
+        backend_url = _wait_for_backend(backend_process)
         if backend_url:
             print(f"Backend API server started: {backend_url}")
             _set_frontend_backend_url(backend_url)
