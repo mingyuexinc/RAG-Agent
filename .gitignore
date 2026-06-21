@@ -14,3 +14,6 @@ data/
 
 # Environment variables
 .env
+
+# Node (commitlint + husky toolchain)
+node_modules/
