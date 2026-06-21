@@ -165,13 +165,18 @@ def retrieve_with_score(
     :param vector_store: 向量库实例（FAISS 或 PineconeStore）
     :param query: 用户问题
     :param k: 返回数量
-    :param filter_metadata: 兼容参数，目前未使用
+    :param filter_metadata: explicit metadata filters from knowledge_search
     :return: [(Document, score), ...]
     """
     logger.debug(f"Performing search with k={k}")
 
-    # Step 1: 规则解析
-    filter_condition = _parse_query_rules(query)
+    # Step 1: combine explicit filters with legacy query-derived filters.
+    filter_condition = dict(filter_metadata or {})
+    rule_filter = _parse_query_rules(query)
+    if rule_filter:
+        filter_condition.update(rule_filter)
+    if not filter_condition:
+        filter_condition = None
 
     logger.info(f"Query: {query}")
     logger.info(f"Generated filter condition: {filter_condition}")
