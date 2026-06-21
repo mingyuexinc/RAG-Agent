@@ -1,24 +1,30 @@
 # Enterprise-level Agent Knowledge Base Assistant
 
 ## packages:
-    python==3.10
+    python>=3.10,<3.12
     fastapi==0.121.2
     uvicorn[standard]==0.38.0
     pypdf2==3.0.1
     langchain==1.0.2
     langchain-openai==1.0.1
     langchain-community==0.3.31
+    langchain-mcp-adapters>=0.1.0,<0.3.0
     langchain-text-splitters==1.0.0
     python-multipart==0.0.20
+    python-dotenv>=1.0.0,<2.0.0
     dashscope==1.24.7
     faiss-cpu==1.12.0
     pinecone==6.0.2
-    ragas==0.4.2
-    gradio==5.30.0
-    gradio-client==1.10.1
-    Pillow==10.3.0
-    aiohttp==3.9.5
+    gradio==5.29.0
+    gradio-client==1.10.0
+    typer>=0.12,<1.0
+    huggingface-hub>=0.28.1
+    Pillow>=10.3.0
     numpy>=1.26.4
+    pydantic>=2.0,<3.0
+
+    # 评估专用（可选，见 pyproject.toml [project.optional-dependencies] eval）
+    # ragas==0.4.2, datasets>=2.14
 
 ## instruction:
     An intelligent agent assistant that supports knowledge retrieval, summary generation, and flowchart generation 
@@ -47,23 +53,26 @@ The system uses LangChain's official tool framework with three main tools:
 
 ## run
 ### Prerequisites
-1. Install required packages:
+1. Install [uv](https://docs.astral.sh/uv/getting-started/installation/) (fast Python package manager).
+2. Sync dependencies (auto-creates `.venv` & downloads Python 3.10):
     ```bash
-    pip install -r requirements.txt
+    uv sync
     ```
 
-2. Start the backend service:
+### Start Services
+1. Start the backend service:
     ```bash
-    python app/main.py
+    uv run python app/main.py
     ```
     The backend will start at `http://localhost:8000`
 
-3. Start the frontend interface:
+2. Start the frontend interface:
     ```bash
-    cd frontend
-    python main.py
+    uv run python frontend/main.py
     ```
     The frontend will be available at `http://localhost:7860`
+
+> Or launch both at once: `uv run python app.py`
 
 ### Usage Steps
 1. **Upload Documents**: Navigate to the "Document Upload" tab and upload PDF files

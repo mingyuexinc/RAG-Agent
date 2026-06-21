@@ -26,3 +26,6 @@ coverage.xml
 .pytest_cache
 .hypothesis
 .DS_Store
+
+# Local virtual environment (do not bake into image)
+.venv/

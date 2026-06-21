@@ -1,0 +1,65 @@
+[project]
+name = "rag-agent"
+version = "0.1.0"
+description = "Enterprise-level Agent Knowledge Base Assistant"
+readme = "README.md"
+requires-python = ">=3.10,<3.12"
+
+# 主依赖：原 requirements.txt 15 项 + 经 import 扫描补全的缺失依赖
+# (fastapi / uvicorn / faiss-cpu / numpy / pydantic 代码实际使用但原文件未声明)
+dependencies = [
+    "pypdf2==3.0.1",
+    "langchain==1.0.2",
+    "langchain-openai==1.0.1",
+    "langchain-community==0.3.31",
+    "langchain-mcp-adapters>=0.1.0,<0.3.0",
+    "langchain-text-splitters==1.0.0",
+    "python-multipart==0.0.20",
+    "python-dotenv>=1.0.0,<2.0.0",
+    "dashscope==1.24.7",
+    "pinecone==6.0.2",
+    "gradio==5.29.0",
+    "gradio-client==1.10.0",
+    "typer>=0.12,<1.0",
+    "huggingface-hub>=0.28.1",
+    "Pillow>=10.3.0",
+    # —— 补全的缺失依赖 ——
+    "fastapi==0.121.2",
+    "uvicorn[standard]==0.38.0",
+    "faiss-cpu==1.12.0",
+    "numpy>=1.26.4",
+    "pydantic>=2.0,<3.0",
+]
+
+[project.optional-dependencies]
+# 评估专用，非运行必需，默认 uv sync 不安装；按需 `uv sync --extra eval`
+eval = [
+    "ragas==0.4.2",
+    "datasets>=2.14",
+]
+
+[dependency-groups]
+# 开发工具链；`uv sync` 默认安装 dev 组，CI 可用 --no-dev 跳过
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "ruff>=0.5",
+]
+
+[tool.uv]
+# ★ 应用模式：项目本身不作为可安装包构建。
+# 项目为「源码树 + sys.path 注入」运行方式（无 [build-system]），
+# 设为 false 后 uv 仅创建 .venv 装依赖，不改 sys.path 运行机制。
+package = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
+ignore = ["E501"]
