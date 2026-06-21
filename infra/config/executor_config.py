@@ -14,7 +14,8 @@ TaskType = Literal[
     "knowledge_qa",
     "flowchart_generation",
     "summary",
-    "context_analysis"
+    "context_analysis",
+    "document_ingestion",
 ]
 
 # 已弃用：硬编码的工具约束映射
@@ -34,18 +35,27 @@ class ExecutorConfig(BaseConfig):
     # JSON任务模式 - 用于LLM理解和生成任务计划
     JSON_TASK_SCHEMA = """
     {
-      "task_type": "knowledge_qa | flowchart_generation | summary | context_analysis",
+      "task_type": "knowledge_qa | flowchart_generation | summary | context_analysis | document_ingestion",
       "need_tools": true,
-      "tools": ["knowledge_search", "summarizer", "chart_gen"],
+      "tools": ["knowledge_search", "summarizer", "chart_gen", "document_parser"],
       "tool_params": {
          "knowledge_search": {
-            "query": "string"
+            "query": "string",
+            "top_k": 5,
+            "filters": {}
          },
          "summarizer": {
             "documents": "knowledge_search.result.documents"
          },
          "chart_gen": {
             "summarized_text": "summarizer.result"
+         },
+         "document_parser": {
+            "file_path": "string",
+            "filename": "string",
+            "page_ranges": "optional string",
+            "ocr_language": "optional string",
+            "parse_mode": "auto"
          }
       }
     }

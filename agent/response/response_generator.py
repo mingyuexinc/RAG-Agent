@@ -39,6 +39,8 @@ class ResponseGenerator:
             return await self._flowchart(result)
         elif result.task_type == "context_analysis":
             return self._context_analysis(doc_agent, query, state)
+        elif result.task_type == "document_ingestion":
+            return self._document_ingestion(result)
         else:
             raise ValueError(f"Unsupported task_type: {result.task_type}")
 
@@ -168,6 +170,17 @@ class ResponseGenerator:
         return {
             "answer": llm_response,
             "task_type": "context_analysis"
+        }
+
+    def _document_ingestion(self, result: ExecutionResult) -> Dict[str, Any]:
+        parser_result = result.tool_results.get("document_parser", {})
+        data = parser_result.get("data", {})
+        title = data.get("title") or "document"
+        return {
+            "answer": f"Document parsed successfully: {title}",
+            "task_type": "document_ingestion",
+            "payload": data,
+            "usage_metadata": data.get("metadata", {}),
         }
 
 async def process_tool_result(
