@@ -17,3 +17,6 @@ data/
 
 # Node (commitlint + husky toolchain)
 node_modules/
+
+# Design assets (drawio diagrams and backups)
+design/
