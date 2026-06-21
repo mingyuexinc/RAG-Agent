@@ -18,11 +18,13 @@ from .registry import ToolRegistry
 from .knowledge.tool import KnowledgeSearchTool
 from .summarizer.tool import SummarizerTool
 from .chart_gen.tool import ChartGenTool
+from .document_parser.tool import DocumentParserTool
 
 # 导入构建器函数（向后兼容）
 from .knowledge import build_knowledge_search_tool, KnowledgeSearchInput
 from .summarizer import build_summarizer_tool, SummarizerInput
 from .chart_gen import build_chart_gen_tool, ChartGenInput
+from .document_parser import build_document_parser_tool, DocumentParserInput
 
 # 向后兼容：保留TOOL_BUILDERS，但使用动态构建
 # 建议使用ToolRegistry.build_tool()替代
@@ -30,6 +32,7 @@ TOOL_BUILDERS = {
     "knowledge_search": build_knowledge_search_tool,
     "summarizer": build_summarizer_tool,
     "chart_gen": build_chart_gen_tool,
+    "document_parser": build_document_parser_tool,
 }
 
 # 导出所有公共接口
@@ -40,14 +43,17 @@ __all__ = [
     "KnowledgeSearchTool",
     "SummarizerTool",
     "ChartGenTool",
+    "DocumentParserTool",
     # 向后兼容：工具构建器
     "TOOL_BUILDERS",
     "build_knowledge_search_tool",
     "build_summarizer_tool",
     "build_chart_gen_tool",
+    "build_document_parser_tool",
     # 输入模型
     "KnowledgeSearchInput",
     "SummarizerInput",
     "ChartGenInput",
+    "DocumentParserInput",
 ]
 

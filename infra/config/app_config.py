@@ -6,6 +6,7 @@ from infra.config.server_config import ServerConfig
 from infra.config.vector_config import VectorConfig
 from infra.config.pinecone_config import PineconeConfig
 from infra.config.database_config import DatabaseConfig
+from infra.config.mcp_config import MCPConfig
 
 
 class AppConfig:
@@ -17,5 +18,6 @@ class AppConfig:
     prompt = PromptConfig()
     pinecone = PineconeConfig()
     database = DatabaseConfig()
+    mcp = MCPConfig()
 
 

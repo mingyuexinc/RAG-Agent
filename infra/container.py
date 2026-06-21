@@ -7,7 +7,7 @@ from rag.vector_store.pinecone_store import get_pinecone_store
 from tools.langchain.registry import ToolRegistry
 
 # Import tool modules so their decorators register them.
-from tools.langchain import chart_gen, knowledge, summarizer  # noqa: F401
+from tools.langchain import chart_gen, document_parser, knowledge, summarizer  # noqa: F401
 
 load_dotenv()
 
